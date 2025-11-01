@@ -1,0 +1,21 @@
+# Development environment variables
+# Copy this file to .dev.vars and fill in your actual keys
+
+# Proxy authentication token
+PROXY_AUTH_TOKEN=your-secret-proxy-token-here
+
+# Anthropic API Keys
+ANTHROPIC_KEY_1=sk-ant-...
+ANTHROPIC_KEY_2=sk-ant-...
+
+# Google AI API Keys
+GOOGLE_KEY_1=AIza...
+
+# OpenAI API Keys
+OPENAI_KEY_1=sk-...
+
+# NVIDIA API Keys (or other OpenAI-compatible services)
+NVIDIA_KEY_1=nvapi-...
+NVIDIA_KEY_2=nvapi-...
+
+# Add more keys as needed based on your ROUTES_CONFIG in wrangler.toml

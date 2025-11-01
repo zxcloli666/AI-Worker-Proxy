@@ -1,0 +1,109 @@
+# Example configuration for wrangler.toml
+# This shows various configuration patterns
+
+name = "ai-worker-proxy"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# Cloudflare AI binding (optional, only needed for cloudflare-ai provider)
+[ai]
+binding = "AI"
+
+[vars]
+# Proxy authentication token
+PROXY_AUTH_TOKEN = "your-secret-proxy-token-here"
+
+# Model routing configuration
+# Note: Model names are now used for routing instead of URL paths
+ROUTES_CONFIG = '''
+{
+  "deep-think": [
+    {
+      "provider": "anthropic",
+      "model": "claude-opus-4-20250514",
+      "apiKeys": ["ANTHROPIC_KEY_1", "ANTHROPIC_KEY_2"]
+    },
+    {
+      "provider": "google",
+      "model": "gemini-2.0-flash-thinking-exp-01-21",
+      "apiKeys": ["GOOGLE_KEY_1"]
+    }
+  ],
+  "fast": [
+    {
+      "provider": "google",
+      "model": "gemini-2.0-flash-exp",
+      "apiKeys": ["GOOGLE_KEY_1"]
+    },
+    {
+      "provider": "cloudflare-ai",
+      "model": "@cf/meta/llama-3.1-8b-instruct",
+      "apiKeys": []
+    }
+  ],
+  "think": [
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-20250514",
+      "apiKeys": ["ANTHROPIC_KEY_1"]
+    }
+  ],
+  "nvidia": [
+    {
+      "provider": "openai-compatible",
+      "baseUrl": "https://integrate.api.nvidia.com/v1",
+      "model": "nvidia/llama-3.1-nemotron-70b-instruct",
+      "apiKeys": ["NVIDIA_KEY_1", "NVIDIA_KEY_2"]
+    }
+  ],
+  "openai": [
+    {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "apiKeys": ["OPENAI_KEY_1", "OPENAI_KEY_2"]
+    }
+  ],
+  "together": [
+    {
+      "provider": "openai-compatible",
+      "baseUrl": "https://api.together.xyz/v1",
+      "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+      "apiKeys": ["TOGETHER_KEY_1"]
+    }
+  ],
+  "groq": [
+    {
+      "provider": "openai-compatible",
+      "baseUrl": "https://api.groq.com/openai/v1",
+      "model": "llama-3.3-70b-versatile",
+      "apiKeys": ["GROQ_KEY_1"]
+    }
+  ],
+  "mixed": [
+    {
+      "provider": "anthropic",
+      "model": "claude-opus-4-20250514",
+      "apiKeys": ["ANTHROPIC_KEY_1"]
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "apiKeys": ["OPENAI_KEY_1"]
+    },
+    {
+      "provider": "google",
+      "model": "gemini-2.0-flash-exp",
+      "apiKeys": ["GOOGLE_KEY_1"]
+    }
+  ]
+}
+'''
+
+# Remember to set secrets with:
+# wrangler secret put ANTHROPIC_KEY_1
+# wrangler secret put GOOGLE_KEY_1
+# wrangler secret put OPENAI_KEY_1
+# wrangler secret put NVIDIA_KEY_1
+# wrangler secret put TOGETHER_KEY_1
+# wrangler secret put GROQ_KEY_1
+# etc.
