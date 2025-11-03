@@ -71,6 +71,7 @@ export class CloudflareAIProvider extends BaseProvider {
         // Cloudflare AI returns a ReadableStream
         const reader = cfStream.getReader();
 
+        // eslint-disable-next-line no-constant-condition
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;

@@ -22,7 +22,7 @@ export abstract class BaseProvider implements AIProvider {
     console.error(`[${context}] Error:`, error);
 
     let statusCode = 500;
-    let message = error?.message || 'Unknown error';
+    const message = error?.message || 'Unknown error';
 
     if (error?.status) {
       statusCode = error.status;

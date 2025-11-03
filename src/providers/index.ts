@@ -24,7 +24,9 @@ export function createProvider(config: ProviderConfig, env: Env): AIProvider {
 
     case 'cloudflare-ai':
       if (!env.AI) {
-        throw new Error('Cloudflare AI binding not found. Make sure AI binding is configured in wrangler.toml');
+        throw new Error(
+          'Cloudflare AI binding not found. Make sure AI binding is configured in wrangler.toml'
+        );
       }
       return new CloudflareAIProvider(config.model, env.AI);
 
@@ -33,4 +35,4 @@ export function createProvider(config: ProviderConfig, env: Env): AIProvider {
   }
 }
 
-export { AIProvider };
+export type { AIProvider };

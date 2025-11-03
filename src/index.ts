@@ -63,10 +63,7 @@ export default {
       const response = await router.executeWithFallback(chatRequest);
 
       if (!response.success) {
-        throw new ProxyError(
-          response.error || 'All providers failed',
-          response.statusCode || 500
-        );
+        throw new ProxyError(response.error || 'All providers failed', response.statusCode || 500);
       }
 
       // Return streaming response
@@ -128,9 +125,7 @@ function verifyAuth(request: Request, env: Env): boolean {
   }
 
   // Support both "Bearer <token>" and raw token
-  const token = authHeader.startsWith('Bearer ')
-    ? authHeader.substring(7)
-    : authHeader;
+  const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : authHeader;
 
   return token === env.PROXY_AUTH_TOKEN;
 }

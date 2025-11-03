@@ -10,7 +10,9 @@ export class OpenAIProvider extends BaseProvider {
         baseURL: this.baseUrl,
       });
 
-      const params: OpenAI.Chat.ChatCompletionCreateParamsNonStreaming | OpenAI.Chat.ChatCompletionCreateParamsStreaming = {
+      const params:
+        | OpenAI.Chat.ChatCompletionCreateParamsNonStreaming
+        | OpenAI.Chat.ChatCompletionCreateParamsStreaming = {
         model: this.model,
         messages: request.messages as any,
         temperature: request.temperature,
@@ -27,7 +29,10 @@ export class OpenAIProvider extends BaseProvider {
       if (request.stream) {
         return this.handleStream(client, params as OpenAI.Chat.ChatCompletionCreateParamsStreaming);
       } else {
-        return this.handleNonStream(client, params as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming);
+        return this.handleNonStream(
+          client,
+          params as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming
+        );
       }
     } catch (error) {
       return this.handleError(error, 'OpenAIProvider');

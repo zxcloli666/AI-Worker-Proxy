@@ -45,10 +45,7 @@ export class AnthropicProvider extends BaseProvider {
     }
   }
 
-  private async handleNonStream(
-    client: Anthropic,
-    params: any
-  ): Promise<ProviderResponse> {
+  private async handleNonStream(client: Anthropic, params: any): Promise<ProviderResponse> {
     const response = await client.messages.create(params);
 
     let content = '';
@@ -79,10 +76,7 @@ export class AnthropicProvider extends BaseProvider {
     };
   }
 
-  private async handleStream(
-    client: Anthropic,
-    params: any
-  ): Promise<ProviderResponse> {
+  private async handleStream(client: Anthropic, params: any): Promise<ProviderResponse> {
     const stream = await client.messages.stream(params);
 
     const { readable, writable } = new TransformStream();
@@ -92,7 +86,6 @@ export class AnthropicProvider extends BaseProvider {
     // Process stream in background
     (async () => {
       try {
-        let contentBuffer = '';
         let toolCallBuffer: any = null;
 
         for await (const event of stream) {
@@ -107,7 +100,6 @@ export class AnthropicProvider extends BaseProvider {
           } else if (event.type === 'content_block_delta') {
             if (event.delta.type === 'text_delta') {
               const text = event.delta.text;
-              contentBuffer += text;
               const chunk = createStreamChunk({ content: text, role: 'assistant' }, this.model);
               await writer.write(encoder.encode(chunk));
             } else if (event.delta.type === 'input_json_delta' && toolCallBuffer) {
