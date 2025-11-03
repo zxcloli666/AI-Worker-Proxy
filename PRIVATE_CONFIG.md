@@ -97,17 +97,21 @@ If you want to modify config without redeploying:
 
 ## 🚀 GitHub Actions and Private Config
 
-GitHub Actions **WILL NOT overwrite** your private config thanks to the `--keep-vars` flag:
+GitHub Actions **WILL NOT overwrite** your private config because `wrangler.toml` has **NO [vars] section**:
 
-```yaml
-# .github/workflows/deploy.yml
-- name: Deploy to Cloudflare Workers
-  uses: cloudflare/wrangler-action@v3
-  with:
-    apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-    accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-    command: deploy --keep-vars  # <-- Preserves variables from dashboard
+```toml
+# wrangler.toml
+name = "ai-worker-proxy"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[ai]
+binding = "AI"
+
+# No [vars] section - all configuration via Dashboard or .dev.vars
 ```
+
+This ensures your Cloudflare Dashboard variables are **never** overwritten during deployment.
 
 ### What happens during deployment:
 
@@ -170,9 +174,9 @@ npm run dev
 **Problem:** GitHub Actions overwrites your private config
 
 **Solution:**
-1. Check that `.github/workflows/deploy.yml` has `command: deploy --keep-vars`
-2. If not - add it and commit
-3. Recreate Environment Variables in dashboard
+1. Make sure `wrangler.toml` has **NO [vars] section**
+2. All configuration should be in Cloudflare Dashboard only
+3. For local dev, use `.dev.vars` file (not committed)
 
 ### Variables are not being read
 

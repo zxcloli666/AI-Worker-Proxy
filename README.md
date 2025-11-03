@@ -36,49 +36,52 @@ npm install
 
 ### 2. Configure Model Routing
 
-Edit `wrangler.toml` to configure your model names and providers:
+**For Production (Cloudflare Dashboard):**
 
-```toml
-[vars]
-PROXY_AUTH_TOKEN = "your-secret-proxy-token-here"
+1. Go to: `Cloudflare Dashboard` → `Workers & Pages` → `ai-worker-proxy` → `Settings` → `Variables`
+2. Add Environment Variable `ROUTES_CONFIG`:
+   ```json
+   {
+     "deep-think": [
+       {
+         "provider": "anthropic",
+         "model": "claude-opus-4-20250514",
+         "apiKeys": ["ANTHROPIC_KEY_1"]
+       }
+     ],
+     "fast": [
+       {
+         "provider": "google",
+         "model": "gemini-2.0-flash-exp",
+         "apiKeys": ["GOOGLE_KEY_1"]
+       }
+     ]
+   }
+   ```
+3. See `wrangler.example.toml` for more configuration examples
 
-ROUTES_CONFIG = '''
-{
-  "deep-think": [
-    {
-      "provider": "anthropic",
-      "model": "claude-opus-4-20250514",
-      "apiKeys": ["ANTHROPIC_KEY_1", "ANTHROPIC_KEY_2"]
-    },
-    {
-      "provider": "google",
-      "model": "gemini-2.0-flash-thinking-exp-01-21",
-      "apiKeys": ["GOOGLE_KEY_1"]
-    }
-  ],
-  "fast": [
-    {
-      "provider": "google",
-      "model": "gemini-2.0-flash-exp",
-      "apiKeys": ["GOOGLE_KEY_1"]
-    }
-  ]
-}
-'''
-```
+**For Local Development:**
+
+Create `.dev.vars` file (see `.dev.vars.example` for format)
 
 **Note**: Model names (e.g., `"deep-think"`, `"fast"`) are used in your API requests, not URL paths.
 
-### 3. Set API Keys
+### 3. Set API Keys and Auth Token
+
+**Via Cloudflare Dashboard (Recommended):**
+
+1. Go to: `Workers & Pages` → `ai-worker-proxy` → `Settings` → `Variables`
+2. Click "Add variable" → Select "Encrypt" for secrets:
+   - `ANTHROPIC_KEY_1` = `sk-ant-xxxxx`
+   - `GOOGLE_KEY_1` = `AIzaxxxxx`
+   - `OPENAI_KEY_1` = `sk-xxxxx`
+   - `PROXY_AUTH_TOKEN` = `your-secret-token`
+
+**Or via Wrangler CLI:**
 
 ```bash
-# Set your API keys as secrets
 wrangler secret put ANTHROPIC_KEY_1
 wrangler secret put GOOGLE_KEY_1
-wrangler secret put OPENAI_KEY_1
-# ... add more as needed
-
-# Optional: Override proxy auth token
 wrangler secret put PROXY_AUTH_TOKEN
 ```
 
@@ -101,8 +104,8 @@ npm run dev
 For production/private configuration:
 - 📖 **See [PRIVATE_CONFIG.md](PRIVATE_CONFIG.md)** for detailed instructions
 - 🔒 Set environment variables in **Cloudflare Dashboard** → Settings → Variables
-- ✅ GitHub Actions uses `--keep-vars` flag to preserve your dashboard config
-- 🚫 The `wrangler.toml` file contains **example configuration only**
+- ✅ The `wrangler.toml` file has **NO [vars] section** to prevent overwriting your config
+- 📋 See `wrangler.example.toml` for configuration examples
 
 ### Model Routing Configuration
 
