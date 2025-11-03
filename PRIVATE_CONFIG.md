@@ -2,18 +2,40 @@
 
 ## ⚠️ IMPORTANT: Public Repository
 
-Since this is a public repository, **DO NOT add private tokens to `wrangler.toml`**!
+This is a **public repository**. The `wrangler.toml` contains **example configuration only**.
 
-## 🔒 How to Configure Private Config
+Your real API keys and production routes should be set in **Cloudflare Dashboard**.
 
-### Method 1: Via Cloudflare Dashboard (RECOMMENDED)
+---
 
-1. **Open Cloudflare Dashboard:**
-   - Navigate to: `Workers & Pages` → `ai-worker-proxy` → `Settings` → `Variables`
+## 🔒 How It Works
 
-2. **Add Environment Variables:**
+The `wrangler.toml` has:
 
-   **Variable: `ROUTES_CONFIG`**
+```toml
+# Preserve Dashboard variables during deployment
+keep_vars = true
+
+[vars]
+# Example configuration (for reference only)
+PROXY_AUTH_TOKEN = "your-secret-proxy-token-here"
+ROUTES_CONFIG = '''{ ... example routes ... }'''
+```
+
+**Key point:** `keep_vars = true` means:
+- ✅ Dashboard variables are **NEVER** overwritten during deployment
+- ✅ Dashboard values take **precedence** over wrangler.toml [vars]
+- ✅ The [vars] in wrangler.toml serve as **examples only**
+
+---
+
+## 🚀 Setup for Production
+
+### Step 1: Set Variables in Cloudflare Dashboard
+
+1. Open: **Cloudflare Dashboard** → **Workers & Pages** → **ai-worker-proxy** → **Settings** → **Variables**
+
+2. Add Environment Variable: **`ROUTES_CONFIG`**
    ```json
    {
      "your-model": [
@@ -33,123 +55,36 @@ Since this is a public repository, **DO NOT add private tokens to `wrangler.toml
    }
    ```
 
-   **Variable: `PROXY_AUTH_TOKEN`**
+3. Add Environment Variable: **`PROXY_AUTH_TOKEN`**
    ```
    your-real-secret-token
    ```
 
-3. **Add Secrets (API keys):**
-   - Click "Add variable" → select "Encrypt"
-   - Add all your API keys:
+4. Add Encrypted Variables (Secrets):
+   - Click **"Add variable"** → select **"Encrypt"**
+   - Add your API keys:
      - `ANTHROPIC_KEY_1` = `sk-ant-xxxxx`
      - `GOOGLE_KEY_1` = `AIzaxxxxx`
      - `OPENAI_KEY_1` = `sk-xxxxx`
      - etc.
 
-4. **Save and Deploy:**
-   - Click "Save and Deploy"
-   - Or just save - GitHub Actions won't overwrite these variables thanks to the `--keep-vars` flag
+5. Click **"Save and Deploy"**
 
----
+### Step 2: Deploy
 
-### Method 2: Via Wrangler CLI (locally)
+Push to GitHub - GitHub Actions will deploy your code without touching Dashboard variables.
 
 ```bash
-# Add Environment Variables
-wrangler secret put ANTHROPIC_KEY_1
-wrangler secret put GOOGLE_KEY_1
-wrangler secret put PROXY_AUTH_TOKEN
-
-# Set ROUTES_CONFIG via dashboard or:
-# Create a separate wrangler.production.toml (DO NOT commit!)
+git push
 ```
 
----
-
-### Method 3: Cloudflare KV Storage (advanced)
-
-If you want to modify config without redeploying:
-
-1. **Create KV namespace:**
-   ```bash
-   wrangler kv:namespace create "CONFIG"
-   ```
-
-2. **Add to wrangler.toml:**
-   ```toml
-   [[kv_namespaces]]
-   binding = "CONFIG"
-   id = "your-kv-id"
-   ```
-
-3. **Upload config to KV:**
-   ```bash
-   wrangler kv:key put --namespace-id=xxx "ROUTES_CONFIG" @config.json
-   ```
-
-4. **Modify code to read from KV:**
-   ```typescript
-   // src/router.ts
-   const configStr = await env.CONFIG.get("ROUTES_CONFIG") || env.ROUTES_CONFIG;
-   ```
-
----
-
-## 🚀 GitHub Actions and Private Config
-
-GitHub Actions **WILL NOT overwrite** your private config because `wrangler.toml` has **NO [vars] section**:
-
-```toml
-# wrangler.toml
-name = "ai-worker-proxy"
-main = "src/index.ts"
-compatibility_date = "2024-01-01"
-
-[ai]
-binding = "AI"
-
-# No [vars] section - all configuration via Dashboard or .dev.vars
-```
-
-This ensures your Cloudflare Dashboard variables are **never** overwritten during deployment.
-
-### What happens during deployment:
-
-- ✅ **Updated:** Code (TypeScript files)
-- ✅ **Updated:** Dependencies (package.json)
-- ❌ **NOT updated:** Environment Variables from dashboard
-- ❌ **NOT updated:** Secrets
-
----
-
-## 📋 Setup Checklist
-
-- [ ] All Environment Variables added to Cloudflare Dashboard
-- [ ] All Secrets (API keys) added
-- [ ] Verified that `ROUTES_CONFIG` contains your private routes
-- [ ] `wrangler.toml` in repo contains example only
-- [ ] GitHub Actions has `--keep-vars` flag
-- [ ] Tested deployment - private config is not overwritten
-
----
-
-## 🔍 Configuration Verification
-
-After deployment, verify that your private config is being used:
-
-```bash
-# Check variables
-wrangler tail
-
-# Or make a test request
-curl https://your-worker.workers.dev/health
-```
+**That's it!** Your private config is safe. `keep_vars = true` protects it.
 
 ---
 
 ## ⚙️ Local Development
 
-For local development, create `.dev.vars` (not committed):
+Create `.dev.vars` file (not committed to git):
 
 ```bash
 # .dev.vars
@@ -160,7 +95,7 @@ GOOGLE_KEY_1=AIzaxxxxx
 ROUTES_CONFIG={"test": [{"provider": "anthropic", "model": "claude-opus-4", "apiKeys": ["ANTHROPIC_KEY_1"]}]}
 ```
 
-Then:
+Run locally:
 ```bash
 npm run dev
 ```
@@ -169,28 +104,42 @@ npm run dev
 
 ## 🆘 Troubleshooting
 
-### Config gets overwritten on deploy
-
-**Problem:** GitHub Actions overwrites your private config
+### Problem: Config still gets overwritten
 
 **Solution:**
-1. Make sure `wrangler.toml` has **NO [vars] section**
-2. All configuration should be in Cloudflare Dashboard only
-3. For local dev, use `.dev.vars` file (not committed)
+1. Verify `wrangler.toml` has `keep_vars = true` (should be line 7)
+2. Make sure you set variables in Dashboard, not just locally
+3. After setting Dashboard variables, click "Save and Deploy"
 
-### Variables are not being read
-
-**Problem:** Worker doesn't see variables from dashboard
+### Problem: Variables not being read
 
 **Solution:**
-1. Make sure variables are added to Environment Variables (not in Secrets for vars)
-2. Use Secrets only for API keys
-3. After changing variables in dashboard, click "Save and Deploy"
+1. Environment variables (like `ROUTES_CONFIG`) go in "Environment Variables" section
+2. API keys should be "Encrypted" (marked as Secret)
+3. After changing Dashboard variables, click "Save and Deploy"
+4. Wait ~30 seconds for changes to propagate
+
+### Problem: Want to test without Dashboard
+
+**Solution:**
+1. Edit `wrangler.toml` [vars] section with your test config
+2. Run `npm run dev` - it will use wrangler.toml values
+3. Don't commit your changes to wrangler.toml!
+4. Before pushing: `git restore wrangler.toml`
 
 ---
 
-## 📖 Additional Resources
+## 📋 Checklist
 
-- [Cloudflare Environment Variables](https://developers.cloudflare.com/workers/configuration/environment-variables/)
-- [Wrangler Secrets](https://developers.cloudflare.com/workers/wrangler/commands/#secret)
-- [KV Storage](https://developers.cloudflare.com/kv/)
+- [ ] `wrangler.toml` has `keep_vars = true` ✅
+- [ ] All production variables set in Cloudflare Dashboard
+- [ ] All API keys added as Encrypted variables
+- [ ] Tested deployment - Dashboard config NOT overwritten
+- [ ] `.dev.vars` created for local development (not committed)
+
+---
+
+## 📖 Resources
+
+- [Cloudflare Environment Variables Docs](https://developers.cloudflare.com/workers/configuration/environment-variables/)
+- [Wrangler Configuration Docs](https://developers.cloudflare.com/workers/wrangler/configuration/)

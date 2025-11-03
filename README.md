@@ -58,7 +58,7 @@ npm install
      ]
    }
    ```
-3. See `wrangler.example.toml` for more configuration examples
+3. See `wrangler.toml` for more configuration examples
 
 **For Local Development:**
 
@@ -104,8 +104,8 @@ npm run dev
 For production/private configuration:
 - 📖 **See [PRIVATE_CONFIG.md](PRIVATE_CONFIG.md)** for detailed instructions
 - 🔒 Set environment variables in **Cloudflare Dashboard** → Settings → Variables
-- ✅ The `wrangler.toml` file has **NO [vars] section** to prevent overwriting your config
-- 📋 See `wrangler.example.toml` for configuration examples
+- ✅ The `wrangler.toml` has `keep_vars = true` to prevent overwriting your Dashboard config
+- 📋 Example configuration is in `wrangler.toml` [vars] section (for reference only)
 
 ### Model Routing Configuration
 

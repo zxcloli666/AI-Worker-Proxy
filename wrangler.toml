@@ -2,26 +2,83 @@ name = "ai-worker-proxy"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 
+# IMPORTANT: Preserve environment variables set in Cloudflare Dashboard
+# This prevents wrangler from overwriting your production config during deployment
+keep_vars = true
+
 # Cloudflare AI binding (optional)
 [ai]
 binding = "AI"
 
 # ====================================================================================
-# IMPORTANT: Environment Variables Configuration
+# EXAMPLE CONFIGURATION
 # ====================================================================================
-# This file does NOT contain [vars] section to prevent overwriting your
-# private configuration in Cloudflare Dashboard.
-#
-# For PRODUCTION configuration:
-# - Set all variables in Cloudflare Dashboard: Workers & Pages → Settings → Variables
-# - See wrangler.example.toml for configuration format
-# - See PRIVATE_CONFIG.md for detailed setup instructions
-#
-# For LOCAL DEVELOPMENT:
-# - Create .dev.vars file (not committed to git)
-# - See .dev.vars.example for format
-# - Run: npm run dev
+# For PRODUCTION: Set your real values in Cloudflare Dashboard
+# For LOCAL DEV: Create .dev.vars file (see .dev.vars.example)
 # ====================================================================================
 
-# No [vars] section here - all configuration via Dashboard or .dev.vars
+[vars]
+# Proxy authentication token
+PROXY_AUTH_TOKEN = "your-secret-proxy-token-here"
 
+# Model routing configuration
+ROUTES_CONFIG = '''
+{
+  "deep-think": [
+    {
+      "provider": "anthropic",
+      "model": "claude-opus-4-20250514",
+      "apiKeys": ["ANTHROPIC_KEY_1", "ANTHROPIC_KEY_2"]
+    },
+    {
+      "provider": "google",
+      "model": "gemini-2.0-flash-thinking-exp-01-21",
+      "apiKeys": ["GOOGLE_KEY_1"]
+    }
+  ],
+  "fast": [
+    {
+      "provider": "google",
+      "model": "gemini-2.0-flash-exp",
+      "apiKeys": ["GOOGLE_KEY_1"]
+    },
+    {
+      "provider": "cloudflare-ai",
+      "model": "@cf/meta/llama-3.1-8b-instruct",
+      "apiKeys": []
+    }
+  ],
+  "nvidia": [
+    {
+      "provider": "openai-compatible",
+      "baseUrl": "https://integrate.api.nvidia.com/v1",
+      "model": "nvidia/llama-3.1-nemotron-70b-instruct",
+      "apiKeys": ["NVIDIA_KEY_1", "NVIDIA_KEY_2"]
+    }
+  ],
+  "openai": [
+    {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "apiKeys": ["OPENAI_KEY_1"]
+    }
+  ],
+  "groq": [
+    {
+      "provider": "openai-compatible",
+      "baseUrl": "https://api.groq.com/openai/v1",
+      "model": "llama-3.3-70b-versatile",
+      "apiKeys": ["GROQ_KEY_1"]
+    }
+  ]
+}
+'''
+
+# API Keys (add these as Secrets in Cloudflare Dashboard):
+# - ANTHROPIC_KEY_1
+# - ANTHROPIC_KEY_2
+# - GOOGLE_KEY_1
+# - NVIDIA_KEY_1
+# - NVIDIA_KEY_2
+# - OPENAI_KEY_1
+# - GROQ_KEY_1
