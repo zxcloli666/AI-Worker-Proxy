@@ -567,13 +567,19 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 If this project helped you, please give it a ⭐️!
 
-<a href="https://github.com/zxcnoname666/AI-Worker-Proxy">
- <picture>
+<p align="center">
+ <a href="https://github.com/zxcnoname666/AI-Worker-Proxy">
+  <picture>
    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=zxcnoname666/AI-Worker-Proxy&type=date&theme=dark" />
    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=zxcnoname666/AI-Worker-Proxy&type=date" />
    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=zxcnoname666/AI-Worker-Proxy&type=date" />
- </picture>
-</a>
+  </picture>
+ </a>
+</p>
+
+<p align="center">
+   <img src="https://count.getloli.com/get/@ai-worker-proxy">
+</p>
 
 ---
 
