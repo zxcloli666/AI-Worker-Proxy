@@ -5,7 +5,7 @@
 **IMPORTANT: Do NOT create public issues for security vulnerabilities.**
 
 Instead, please report security issues privately:
-- Go to: https://github.com/zxcnoname666/AI-Worker-Proxy/security/advisories/new
+- Go to: https://github.com/loli669/AI-Worker-Proxy/security/advisories/new
 
 We will respond within **48 hours**.
 

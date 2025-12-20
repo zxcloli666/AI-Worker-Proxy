@@ -38,12 +38,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/zxcnoname666/AI-Worker-Proxy.git"
+    "url": "https://github.com/loli669/AI-Worker-Proxy.git"
   },
   "bugs": {
-    "url": "https://github.com/zxcnoname666/AI-Worker-Proxy/issues"
+    "url": "https://github.com/loli669/AI-Worker-Proxy/issues"
   },
-  "homepage": "https://github.com/zxcnoname666/AI-Worker-Proxy#readme",
+  "homepage": "https://github.com/loli669/AI-Worker-Proxy#readme",
   "author": "noname",
   "license": "MIT",
   "devDependencies": {
