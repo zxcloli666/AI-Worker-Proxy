@@ -41,7 +41,7 @@
 ### Step 1️⃣: Clone & Install
 
 ```bash
-git clone https://github.com/zxcnoname666/AI-Worker-Proxy.git
+git clone https://github.com/loli669/AI-Worker-Proxy.git
 cd AI-Worker-Proxy
 npm install
 ```
@@ -557,8 +557,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 💬 Support & Questions
 
-- 🐛 **Issues**: [GitHub Issues](https://github.com/zxcnoname666/AI-Worker-Proxy/issues)
-- 💡 **Discussions**: [GitHub Discussions](https://github.com/zxcnoname666/AI-Worker-Proxy/discussions)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/loli669/AI-Worker-Proxy/issues)
+- 💡 **Discussions**: [GitHub Discussions](https://github.com/loli669/AI-Worker-Proxy/discussions)
 - 📧 **Email**: Create an issue instead for faster response
 
 ---
@@ -568,11 +568,11 @@ MIT License - see [LICENSE](LICENSE) file for details.
 If this project helped you, please give it a ⭐️!
 
 <p align="center">
- <a href="https://github.com/zxcnoname666/AI-Worker-Proxy">
+ <a href="https://github.com/loli669/AI-Worker-Proxy">
   <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=zxcnoname666/AI-Worker-Proxy&type=date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=zxcnoname666/AI-Worker-Proxy&type=date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=zxcnoname666/AI-Worker-Proxy&type=date" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=loli669/AI-Worker-Proxy&type=date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=loli669/AI-Worker-Proxy&type=date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=loli669/AI-Worker-Proxy&type=date" />
   </picture>
  </a>
 </p>
