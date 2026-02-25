@@ -8,7 +8,8 @@
     "deploy": "wrangler deploy",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "check": "tsc --noEmit && eslint src --ext .ts"
   },
   "keywords": [
     "cloudflare",

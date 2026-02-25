@@ -1,17 +1,15 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { BaseProvider } from './base';
 import { OpenAIChatRequest, ProviderResponse, OpenAIMessage, ToolCall } from '../types';
-import { createOpenAIResponse, createStreamChunk } from '../utils/response-mapper';
+import { createOpenAIResponse, StreamSession } from '../utils/response-mapper';
 
 export class AnthropicProvider extends BaseProvider {
   async chat(request: OpenAIChatRequest, apiKey: string): Promise<ProviderResponse> {
     try {
       const client = new Anthropic({ apiKey });
 
-      // Convert OpenAI messages to Anthropic format
       const { system, messages } = this.convertMessages(request.messages);
 
-      // Convert tools if present
       const tools = request.tools?.map((tool) => ({
         name: tool.function.name,
         description: tool.function.description || '',
@@ -37,9 +35,8 @@ export class AnthropicProvider extends BaseProvider {
 
       if (request.stream) {
         return this.handleStream(client, params);
-      } else {
-        return this.handleNonStream(client, params);
       }
+      return this.handleNonStream(client, params);
     } catch (error) {
       return this.handleError(error, 'AnthropicProvider');
     }
@@ -68,79 +65,75 @@ export class AnthropicProvider extends BaseProvider {
     }
 
     const finishReason = response.stop_reason === 'tool_use' ? 'tool_calls' : 'stop';
-    const openAIResponse = createOpenAIResponse(content, this.model, finishReason, toolCalls);
 
     return {
       success: true,
-      response: openAIResponse,
+      response: createOpenAIResponse(content, this.model, finishReason, toolCalls),
     };
   }
 
   private async handleStream(client: Anthropic, params: any): Promise<ProviderResponse> {
     const stream = await client.messages.stream(params);
-
-    const { readable, writable } = new TransformStream();
+    const { readable, writable } = new TransformStream<Uint8Array>();
     const writer = writable.getWriter();
-    const encoder = new TextEncoder();
+    const session = new StreamSession(this.model);
 
-    // Process stream in background
     (async () => {
       try {
-        let toolCallBuffer: any = null;
+        // Send initial role chunk per OpenAI spec
+        await writer.write(session.roleChunk());
+
+        // Track tool calls by index for proper incremental streaming
+        let toolCallIndex = -1;
+        let hasToolCalls = false;
 
         for await (const event of stream) {
           if (event.type === 'content_block_start') {
             if (event.content_block.type === 'tool_use') {
-              toolCallBuffer = {
-                id: event.content_block.id,
-                name: event.content_block.name,
-                input: '',
-              };
+              toolCallIndex++;
+              hasToolCalls = true;
+              // Send tool call start with id, name, empty args
+              await writer.write(
+                session.toolCallStartChunk(
+                  toolCallIndex,
+                  event.content_block.id,
+                  event.content_block.name
+                )
+              );
             }
           } else if (event.type === 'content_block_delta') {
             if (event.delta.type === 'text_delta') {
-              const text = event.delta.text;
-              const chunk = createStreamChunk({ content: text, role: 'assistant' }, this.model);
-              await writer.write(encoder.encode(chunk));
-            } else if (event.delta.type === 'input_json_delta' && toolCallBuffer) {
-              toolCallBuffer.input += event.delta.partial_json;
-            }
-          } else if (event.type === 'content_block_stop') {
-            if (toolCallBuffer) {
-              // Send tool call
-              const toolCall: ToolCall = {
-                id: toolCallBuffer.id,
-                type: 'function',
-                function: {
-                  name: toolCallBuffer.name,
-                  arguments: toolCallBuffer.input,
-                },
-              };
-              const chunk = createStreamChunk(
-                { tool_calls: [toolCall], role: 'assistant' },
-                this.model
+              await writer.write(session.textChunk(event.delta.text));
+            } else if (event.delta.type === 'input_json_delta') {
+              // Stream arguments incrementally
+              await writer.write(
+                session.toolCallArgsChunk(toolCallIndex, event.delta.partial_json)
               );
-              await writer.write(encoder.encode(chunk));
-              toolCallBuffer = null;
             }
           } else if (event.type === 'message_stop') {
-            const finishReason = toolCallBuffer ? 'tool_calls' : 'stop';
-            const chunk = createStreamChunk({}, this.model, finishReason);
-            await writer.write(encoder.encode(chunk));
-            await writer.write(encoder.encode('data: [DONE]\n\n'));
+            const reason = hasToolCalls ? 'tool_calls' : 'stop';
+            await writer.write(session.finishChunk(reason));
+            await writer.write(session.done());
           }
         }
       } catch (error) {
-        console.error('Stream error:', error);
+        console.error('[AnthropicProvider] Stream error:', error);
+        try {
+          await writer.write(session.finishChunk('stop'));
+          await writer.write(session.done());
+        } catch {
+          // Writer may already be closed
+        }
       } finally {
-        await writer.close();
+        try {
+          await writer.close();
+        } catch {
+          // Already closed
+        }
       }
     })();
 
-    return {
-      success: true,
-      stream: readable,
-    };
+    return { success: true, stream: readable };
   }
 
   private convertMessages(messages: OpenAIMessage[]): {
@@ -171,12 +164,10 @@ export class AnthropicProvider extends BaseProvider {
           }
         }
 
-        convertedMessages.push({
-          role: msg.role,
-          content,
-        });
+        if (content.length > 0) {
+          convertedMessages.push({ role: msg.role, content });
+        }
       } else if (msg.role === 'tool') {
-        // Tool result
         convertedMessages.push({
           role: 'user',
           content: [

@@ -1,4 +1,5 @@
 // OpenAI API types
+
 export interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool' | 'function';
   content: string | null;
@@ -13,6 +14,17 @@ export interface ToolCall {
   function: {
     name: string;
     arguments: string;
+  };
+}
+
+/** Tool call delta in streaming — MUST include `index` per OpenAI spec */
+export interface StreamToolCallDelta {
+  index: number;
+  id?: string;
+  type?: 'function';
+  function?: {
+    name?: string;
+    arguments?: string;
   };
 }
 
@@ -64,7 +76,11 @@ export interface OpenAIStreamChunk {
   model: string;
   choices: Array<{
     index: number;
-    delta: Partial<OpenAIMessage>;
+    delta: {
+      role?: string;
+      content?: string | null;
+      tool_calls?: StreamToolCallDelta[];
+    };
     finish_reason: 'stop' | 'length' | 'tool_calls' | 'content_filter' | null;
   }>;
 }
@@ -73,8 +89,8 @@ export interface OpenAIStreamChunk {
 export interface ProviderConfig {
   provider: 'anthropic' | 'google' | 'openai' | 'openai-compatible' | 'cloudflare-ai';
   model: string;
-  apiKeys: string[]; // Array of env var names
-  baseUrl?: string; // For openai-compatible providers
+  apiKeys: string[];
+  baseUrl?: string;
 }
 
 export interface RouteConfig {
@@ -83,10 +99,10 @@ export interface RouteConfig {
 
 // Environment bindings
 export interface Env {
-  AI?: any; // Cloudflare AI binding
-  PROXY_AUTH_TOKEN: string; // Cloudflare Secret (set in Dashboard)
-  ROUTES_CONFIG: string; // Environment variable (injected from GitHub Variable)
-  [key: string]: any; // Dynamic API keys (Cloudflare Secrets, set in Dashboard)
+  AI?: any;
+  PROXY_AUTH_TOKEN: string;
+  ROUTES_CONFIG: string;
+  [key: string]: any;
 }
 
 // Provider response

@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { BaseProvider } from './base';
 import { OpenAIChatRequest, ProviderResponse, OpenAIMessage, ToolCall } from '../types';
-import { createOpenAIResponse, createStreamChunk } from '../utils/response-mapper';
+import { createOpenAIResponse, StreamSession, generateId } from '../utils/response-mapper';
 
 export class GoogleProvider extends BaseProvider {
   async chat(request: OpenAIChatRequest, apiKey: string): Promise<ProviderResponse> {
@@ -9,10 +9,8 @@ export class GoogleProvider extends BaseProvider {
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: this.model });
 
-      // Convert messages to Gemini format
       const { systemInstruction, contents } = this.convertMessages(request.messages);
 
-      // Convert tools if present
       const tools = request.tools
         ? [
             {
@@ -31,21 +29,12 @@ export class GoogleProvider extends BaseProvider {
         topP: request.top_p,
       };
 
+      const params = { contents, systemInstruction, tools, generationConfig };
+
       if (request.stream) {
-        return this.handleStream(model, {
-          contents,
-          systemInstruction,
-          tools,
-          generationConfig,
-        });
-      } else {
-        return this.handleNonStream(model, {
-          contents,
-          systemInstruction,
-          tools,
-          generationConfig,
-        });
+        return this.handleStream(model, params);
       }
+      return this.handleNonStream(model, params);
     } catch (error) {
       return this.handleError(error, 'GoogleProvider');
     }
@@ -58,12 +47,11 @@ export class GoogleProvider extends BaseProvider {
     let content = '';
     let toolCalls: ToolCall[] | undefined;
 
-    // Check for function calls
     const functionCalls = response.functionCalls();
     if (functionCalls && functionCalls.length > 0) {
       toolCalls = functionCalls.map((fc: any, index: number) => ({
-        id: `call_${Date.now()}_${index}`,
-        type: 'function',
+        id: `call_${generateId(24)}`,
+        type: 'function' as const,
         function: {
           name: fc.name,
           arguments: JSON.stringify(fc.args),
@@ -74,78 +62,68 @@ export class GoogleProvider extends BaseProvider {
     }
 
     const finishReason = toolCalls ? 'tool_calls' : 'stop';
-    const openAIResponse = createOpenAIResponse(content, this.model, finishReason, toolCalls);
 
     return {
       success: true,
-      response: openAIResponse,
+      response: createOpenAIResponse(content, this.model, finishReason, toolCalls),
     };
   }
 
   private async handleStream(model: any, params: any): Promise<ProviderResponse> {
     const result = await model.generateContentStream(params);
-
-    const { readable, writable } = new TransformStream();
+    const { readable, writable } = new TransformStream<Uint8Array>();
     const writer = writable.getWriter();
-    const encoder = new TextEncoder();
+    const session = new StreamSession(this.model);
 
-    // Process stream in background
     (async () => {
       try {
-        let isFirst = true;
+        await writer.write(session.roleChunk());
 
         for await (const chunk of result.stream) {
           const chunkText = chunk.text();
-
           if (chunkText) {
-            const delta = isFirst
-              ? { content: chunkText, role: 'assistant' as const }
-              : { content: chunkText };
-
-            const streamChunk = createStreamChunk(delta, this.model);
-            await writer.write(encoder.encode(streamChunk));
-            isFirst = false;
+            await writer.write(session.textChunk(chunkText));
           }
 
-          // Check for function calls
           const functionCalls = chunk.functionCalls();
           if (functionCalls && functionCalls.length > 0) {
-            for (const [index, fc] of functionCalls.entries()) {
-              const toolCall: ToolCall = {
-                id: `call_${Date.now()}_${index}`,
-                type: 'function',
-                function: {
-                  name: fc.name,
-                  arguments: JSON.stringify(fc.args),
-                },
-              };
-
-              const delta = isFirst
-                ? { tool_calls: [toolCall], role: 'assistant' as const }
-                : { tool_calls: [toolCall] };
-
-              const streamChunk = createStreamChunk(delta, this.model);
-              await writer.write(encoder.encode(streamChunk));
-              isFirst = false;
+            for (let i = 0; i < functionCalls.length; i++) {
+              const fc = functionCalls[i];
+              const callId = `call_${generateId(24)}`;
+              // Send start chunk with name
+              await writer.write(session.toolCallStartChunk(i, callId, fc.name));
+              // Send full arguments in one chunk (Gemini doesn't stream args incrementally)
+              await writer.write(session.toolCallArgsChunk(i, JSON.stringify(fc.args)));
             }
           }
         }
 
-        // Send final chunk
-        const finishChunk = createStreamChunk({}, this.model, 'stop');
-        await writer.write(encoder.encode(finishChunk));
-        await writer.write(encoder.encode('data: [DONE]\n\n'));
+        // Determine finish reason based on what we received
+        const finalResponse = await result.response;
+        const hasFunctionCalls =
+          finalResponse.functionCalls() && finalResponse.functionCalls().length > 0;
+        const reason = hasFunctionCalls ? 'tool_calls' : 'stop';
+
+        await writer.write(session.finishChunk(reason));
+        await writer.write(session.done());
       } catch (error) {
-        console.error('Stream error:', error);
+        console.error('[GoogleProvider] Stream error:', error);
+        try {
+          await writer.write(session.finishChunk('stop'));
+          await writer.write(session.done());
+        } catch {
+          // Writer may already be closed
+        }
       } finally {
-        await writer.close();
+        try {
+          await writer.close();
+        } catch {
+          // Already closed
+        }
       }
     })();
 
-    return {
-      success: true,
-      stream: readable,
-    };
+    return { success: true, stream: readable };
   }
 
   private convertMessages(messages: OpenAIMessage[]): {
@@ -181,12 +159,10 @@ export class GoogleProvider extends BaseProvider {
           }
         }
 
-        contents.push({
-          role: 'model',
-          parts,
-        });
+        if (parts.length > 0) {
+          contents.push({ role: 'model', parts });
+        }
       } else if (msg.role === 'tool') {
-        // Tool response
         const functionName = messages
           .slice()
           .reverse()
@@ -199,9 +175,7 @@ export class GoogleProvider extends BaseProvider {
             {
               functionResponse: {
                 name: functionName || 'unknown',
-                response: {
-                  content: msg.content || '',
-                },
+                response: { content: msg.content || '' },
               },
             },
           ],

@@ -15,23 +15,28 @@ jobs:
         with:
           ref: ${{ github.head_ref || github.ref }}
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm install
+        run: pnpm install
 
       - name: Run ESLint
-        run: npm run lint
+        run: pnpm run lint
 
       - name: Run type check
-        run: npm run type-check
+        run: pnpm run type-check
 
       - name: Run format check
-        run: npx prettier --check "src/**/*.ts"
+        run: pnpm exec prettier --check "src/**/*.ts"
 
   deploy:
     name: Deploy
@@ -43,25 +48,32 @@ jobs:
         with:
           ref: ${{ github.head_ref || github.ref }}
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm install
+        run: pnpm install
 
       - name: Replace ROUTES_CONFIG in wrangler.toml
+        env:
+          ROUTES_CONFIG: ${{ vars.ROUTES_CONFIG }}
         run: |
           # Remove existing [vars] section and everything after it
           sed -i '/^\[vars\]/,$d' wrangler.toml
 
           # Add new [vars] section with GitHub Variable
-          cat >> wrangler.toml << 'EOF'
+          cat >> wrangler.toml << EOF
 
           [vars]
-          ROUTES_CONFIG = '''${{ vars.ROUTES_CONFIG }}'''
+          ROUTES_CONFIG = '''${ROUTES_CONFIG}'''
           EOF
 
       - name: Deploy to Cloudflare Workers

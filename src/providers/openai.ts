@@ -28,12 +28,11 @@ export class OpenAIProvider extends BaseProvider {
 
       if (request.stream) {
         return this.handleStream(client, params as OpenAI.Chat.ChatCompletionCreateParamsStreaming);
-      } else {
-        return this.handleNonStream(
-          client,
-          params as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming
-        );
       }
+      return this.handleNonStream(
+        client,
+        params as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming
+      );
     } catch (error) {
       return this.handleError(error, 'OpenAIProvider');
     }
@@ -44,11 +43,7 @@ export class OpenAIProvider extends BaseProvider {
     params: OpenAI.Chat.ChatCompletionCreateParamsNonStreaming
   ): Promise<ProviderResponse> {
     const response = await client.chat.completions.create(params);
-
-    return {
-      success: true,
-      response: response as any,
-    };
+    return { success: true, response: response as any };
   }
 
   private async handleStream(
@@ -56,30 +51,43 @@ export class OpenAIProvider extends BaseProvider {
     params: OpenAI.Chat.ChatCompletionCreateParamsStreaming
   ): Promise<ProviderResponse> {
     const stream = await client.chat.completions.create(params);
-
-    const { readable, writable } = new TransformStream();
+    const { readable, writable } = new TransformStream<Uint8Array>();
     const writer = writable.getWriter();
     const encoder = new TextEncoder();
 
-    // Process stream in background
     (async () => {
       try {
         for await (const chunk of stream) {
-          const data = `data: ${JSON.stringify(chunk)}\n\n`;
-          await writer.write(encoder.encode(data));
+          // OpenAI SDK already returns properly formatted chunks with `index` on tool_calls.
+          // Pass through as-is for maximum compatibility.
+          await writer.write(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
         }
-
         await writer.write(encoder.encode('data: [DONE]\n\n'));
       } catch (error) {
-        console.error('Stream error:', error);
+        console.error('[OpenAIProvider] Stream error:', error);
+        try {
+          // Send a clean finish so the client doesn't hang
+          const errorFinish = {
+            id: 'chatcmpl-error',
+            object: 'chat.completion.chunk',
+            created: Math.floor(Date.now() / 1000),
+            model: params.model,
+            choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
+          };
+          await writer.write(encoder.encode(`data: ${JSON.stringify(errorFinish)}\n\n`));
+          await writer.write(encoder.encode('data: [DONE]\n\n'));
+        } catch {
+          // Writer may already be closed
+        }
       } finally {
-        await writer.close();
+        try {
+          await writer.close();
+        } catch {
+          // Already closed
+        }
       }
     })();
 
-    return {
-      success: true,
-      stream: readable,
-    };
+    return { success: true, stream: readable };
   }
 }
