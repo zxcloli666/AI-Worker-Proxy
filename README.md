@@ -101,8 +101,16 @@ This allows you to update your model lists or failover logic without anyone seei
   "cheap-fast": [
     {
       "provider": "google",
-      "model": "gemini-1.5-flash",
+      "model": "gemini-2.0-flash",
       "apiKeys": ["GOOGLE_KEY_1"]
+    }
+  ],
+  "search": [
+    {
+      "provider": "google",
+      "model": "gemini-3-flash-preview",
+      "apiKeys": ["GOOGLE_KEY_1"],
+      "grounding": true
     }
   ]
 }

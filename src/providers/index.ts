@@ -11,7 +11,7 @@ export function createProvider(config: ProviderConfig, env: Env): AIProvider {
       return new AnthropicProvider(config.model);
 
     case 'google':
-      return new GoogleProvider(config.model);
+      return new GoogleProvider(config.model, undefined, config.grounding);
 
     case 'openai':
       return new OpenAIProvider(config.model);

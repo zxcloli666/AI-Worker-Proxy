@@ -1,64 +1,117 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI, type Content, type Part } from '@google/genai';
 import { BaseProvider } from './base';
 import { OpenAIChatRequest, ProviderResponse, OpenAIMessage, ToolCall } from '../types';
 import { createOpenAIResponse, StreamSession, generateId } from '../utils/response-mapper';
 
+/**
+ * Thought signatures are required by Gemini 3 for function calling.
+ * We encode them into the tool call ID so they survive the round-trip
+ * through OpenAI-format clients that don't know about signatures.
+ *
+ * Format: tsig:<base64url_signature>:<randomId>
+ */
+const TSIG_PREFIX = 'tsig:';
+
+function encodeToolCallId(signature?: string): string {
+  const randomPart = generateId(12);
+  if (!signature) return `call_${randomPart}`;
+  const encoded = btoa(signature).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `${TSIG_PREFIX}${encoded}:${randomPart}`;
+}
+
+function decodeThoughtSignature(toolCallId: string): string | undefined {
+  if (!toolCallId.startsWith(TSIG_PREFIX)) return undefined;
+  const rest = toolCallId.slice(TSIG_PREFIX.length);
+  const colonIdx = rest.lastIndexOf(':');
+  if (colonIdx === -1) return undefined;
+  const encoded = rest.slice(0, colonIdx);
+  return atob(encoded.replace(/-/g, '+').replace(/_/g, '/'));
+}
+
 export class GoogleProvider extends BaseProvider {
+  private grounding: boolean;
+
+  constructor(model: string, baseUrl?: string, grounding = false) {
+    super(model, baseUrl);
+    this.grounding = grounding;
+  }
+
   async chat(request: OpenAIChatRequest, apiKey: string): Promise<ProviderResponse> {
     try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: this.model });
+      const ai = new GoogleGenAI({ apiKey });
 
       const { systemInstruction, contents } = this.convertMessages(request.messages);
 
-      const tools = request.tools
-        ? [
-            {
-              functionDeclarations: request.tools.map((tool) => ({
-                name: tool.function.name,
-                description: tool.function.description || '',
-                parameters: tool.function.parameters || {},
-              })),
-            },
-          ]
-        : undefined;
+      // Build tools array
+      const tools: Record<string, unknown>[] = [];
 
-      const generationConfig: any = {
+      // User-defined function declarations
+      if (request.tools && request.tools.length > 0) {
+        tools.push({
+          functionDeclarations: request.tools.map((tool) => ({
+            name: tool.function.name,
+            description: tool.function.description || '',
+            parameters: tool.function.parameters || {},
+          })),
+        });
+      }
+
+      // Google Search grounding
+      if (this.grounding) {
+        tools.push({ googleSearch: {} });
+      }
+
+      const config: Record<string, unknown> = {
         temperature: request.temperature,
         maxOutputTokens: request.max_tokens,
         topP: request.top_p,
       };
 
-      const params = { contents, systemInstruction, tools, generationConfig };
+      if (systemInstruction) {
+        config.systemInstruction = systemInstruction;
+      }
+      if (tools.length > 0) {
+        config.tools = tools;
+      }
 
       if (request.stream) {
-        return this.handleStream(model, params);
+        return this.handleStream(ai, contents, config);
       }
-      return this.handleNonStream(model, params);
+      return this.handleNonStream(ai, contents, config);
     } catch (error) {
       return this.handleError(error, 'GoogleProvider');
     }
   }
 
-  private async handleNonStream(model: any, params: any): Promise<ProviderResponse> {
-    const result = await model.generateContent(params);
-    const response = result.response;
+  private async handleNonStream(
+    ai: GoogleGenAI,
+    contents: Content[],
+    config: Record<string, unknown>
+  ): Promise<ProviderResponse> {
+    const response = await ai.models.generateContent({
+      model: this.model,
+      contents,
+      config,
+    });
 
-    let content = '';
+    let content = response.text || '';
     let toolCalls: ToolCall[] | undefined;
 
-    const functionCalls = response.functionCalls();
-    if (functionCalls && functionCalls.length > 0) {
-      toolCalls = functionCalls.map((fc: any, index: number) => ({
-        id: `call_${generateId(24)}`,
-        type: 'function' as const,
-        function: {
-          name: fc.name,
-          arguments: JSON.stringify(fc.args),
-        },
-      }));
-    } else {
-      content = response.text();
+    // Extract function calls with thought signatures
+    const parts = response.candidates?.[0]?.content?.parts;
+    if (parts) {
+      const fcParts = parts.filter((p: Part) => p.functionCall);
+      if (fcParts.length > 0) {
+        toolCalls = fcParts.map((p: Part) => ({
+          id: encodeToolCallId((p as Record<string, unknown>).thoughtSignature as string),
+          type: 'function' as const,
+          function: {
+            name: p.functionCall!.name || '',
+            arguments: JSON.stringify(p.functionCall!.args || {}),
+          },
+        }));
+        content = '';
+      }
     }
 
     const finishReason = toolCalls ? 'tool_calls' : 'stop';
@@ -69,8 +122,17 @@ export class GoogleProvider extends BaseProvider {
     };
   }
 
-  private async handleStream(model: any, params: any): Promise<ProviderResponse> {
-    const result = await model.generateContentStream(params);
+  private async handleStream(
+    ai: GoogleGenAI,
+    contents: Content[],
+    config: Record<string, unknown>
+  ): Promise<ProviderResponse> {
+    const response = await ai.models.generateContentStream({
+      model: this.model,
+      contents,
+      config,
+    });
+
     const { readable, writable } = new TransformStream<Uint8Array>();
     const writer = writable.getWriter();
     const session = new StreamSession(this.model);
@@ -78,33 +140,35 @@ export class GoogleProvider extends BaseProvider {
     (async () => {
       try {
         await writer.write(session.roleChunk());
+        let hasToolCalls = false;
 
-        for await (const chunk of result.stream) {
-          const chunkText = chunk.text();
-          if (chunkText) {
-            await writer.write(session.textChunk(chunkText));
+        for await (const chunk of response) {
+          // Text content
+          if (chunk.text) {
+            await writer.write(session.textChunk(chunk.text));
           }
 
-          const functionCalls = chunk.functionCalls();
-          if (functionCalls && functionCalls.length > 0) {
-            for (let i = 0; i < functionCalls.length; i++) {
-              const fc = functionCalls[i];
-              const callId = `call_${generateId(24)}`;
-              // Send start chunk with name
-              await writer.write(session.toolCallStartChunk(i, callId, fc.name));
-              // Send full arguments in one chunk (Gemini doesn't stream args incrementally)
-              await writer.write(session.toolCallArgsChunk(i, JSON.stringify(fc.args)));
+          // Function calls
+          const parts = chunk.candidates?.[0]?.content?.parts;
+          if (parts) {
+            const fcParts = parts.filter((p: Part) => p.functionCall);
+            for (let i = 0; i < fcParts.length; i++) {
+              const p = fcParts[i];
+              hasToolCalls = true;
+              const callId = encodeToolCallId(
+                (p as Record<string, unknown>).thoughtSignature as string
+              );
+              await writer.write(
+                session.toolCallStartChunk(i, callId, p.functionCall!.name || '')
+              );
+              await writer.write(
+                session.toolCallArgsChunk(i, JSON.stringify(p.functionCall!.args || {}))
+              );
             }
           }
         }
 
-        // Determine finish reason based on what we received
-        const finalResponse = await result.response;
-        const hasFunctionCalls =
-          finalResponse.functionCalls() && finalResponse.functionCalls().length > 0;
-        const reason = hasFunctionCalls ? 'tool_calls' : 'stop';
-
-        await writer.write(session.finishChunk(reason));
+        await writer.write(session.finishChunk(hasToolCalls ? 'tool_calls' : 'stop'));
         await writer.write(session.done());
       } catch (error) {
         console.error('[GoogleProvider] Stream error:', error);
@@ -112,7 +176,7 @@ export class GoogleProvider extends BaseProvider {
           await writer.write(session.finishChunk('stop'));
           await writer.write(session.done());
         } catch {
-          // Writer may already be closed
+          // Writer already closed
         }
       } finally {
         try {
@@ -126,12 +190,16 @@ export class GoogleProvider extends BaseProvider {
     return { success: true, stream: readable };
   }
 
+  /**
+   * Convert OpenAI messages to Google GenAI Content format.
+   * Preserves thought signatures from encoded tool call IDs.
+   */
   private convertMessages(messages: OpenAIMessage[]): {
     systemInstruction?: string;
-    contents: any[];
+    contents: Content[];
   } {
     let systemInstruction: string | undefined;
-    const contents: any[] = [];
+    const contents: Content[] = [];
 
     for (const msg of messages) {
       if (msg.role === 'system') {
@@ -142,7 +210,7 @@ export class GoogleProvider extends BaseProvider {
           parts: [{ text: msg.content || '' }],
         });
       } else if (msg.role === 'assistant') {
-        const parts: any[] = [];
+        const parts: Part[] = [];
 
         if (msg.content) {
           parts.push({ text: msg.content });
@@ -150,12 +218,18 @@ export class GoogleProvider extends BaseProvider {
 
         if (msg.tool_calls) {
           for (const toolCall of msg.tool_calls) {
-            parts.push({
+            const part: Record<string, unknown> = {
               functionCall: {
                 name: toolCall.function.name,
                 args: JSON.parse(toolCall.function.arguments),
               },
-            });
+            };
+            // Restore thought signature from encoded tool call ID
+            const sig = decodeThoughtSignature(toolCall.id);
+            if (sig) {
+              part.thoughtSignature = sig;
+            }
+            parts.push(part as Part);
           }
         }
 
@@ -163,6 +237,7 @@ export class GoogleProvider extends BaseProvider {
           contents.push({ role: 'model', parts });
         }
       } else if (msg.role === 'tool') {
+        // Find the function name from the matching tool call
         const functionName = messages
           .slice()
           .reverse()
@@ -170,7 +245,7 @@ export class GoogleProvider extends BaseProvider {
           ?.tool_calls?.find((tc) => tc.id === msg.tool_call_id)?.function.name;
 
         contents.push({
-          role: 'function',
+          role: 'user',
           parts: [
             {
               functionResponse: {

@@ -73,7 +73,7 @@ export class CloudflareAIProvider extends BaseProvider {
         const reader = cfStream.getReader();
         let hasToolCalls = false;
 
-        while (true) {
+        for (;;) {
           const { done, value } = await reader.read();
           if (done) break;
 

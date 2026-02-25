@@ -91,6 +91,8 @@ export interface ProviderConfig {
   model: string;
   apiKeys: string[];
   baseUrl?: string;
+  /** Enable Google Search grounding (Google provider only) */
+  grounding?: boolean;
 }
 
 export interface RouteConfig {

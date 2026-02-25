@@ -128,7 +128,7 @@ export class StreamSession {
   }
 
   /** Write an SSE error comment (non-standard but helpful for debugging) */
-  errorChunk(message: string): Uint8Array {
+  errorChunk(_message: string): Uint8Array {
     const payload = {
       id: this.id,
       object: 'chat.completion.chunk',

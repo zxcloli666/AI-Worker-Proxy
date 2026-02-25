@@ -47,6 +47,14 @@ ROUTES_CONFIG = '''
       "model": "nvidia/llama-3.1-nemotron-70b-instruct",
       "apiKeys": ["NVIDIA_KEY_1"]
     }
+  ],
+  "search": [
+    {
+      "provider": "google",
+      "model": "gemini-3-flash-preview",
+      "apiKeys": ["GOOGLE_KEY_1"],
+      "grounding": true
+    }
   ]
 }
 '''
