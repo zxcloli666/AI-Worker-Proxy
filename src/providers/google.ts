@@ -158,9 +158,7 @@ export class GoogleProvider extends BaseProvider {
               const callId = encodeToolCallId(
                 (p as Record<string, unknown>).thoughtSignature as string
               );
-              await writer.write(
-                session.toolCallStartChunk(i, callId, p.functionCall!.name || '')
-              );
+              await writer.write(session.toolCallStartChunk(i, callId, p.functionCall!.name || ''));
               await writer.write(
                 session.toolCallArgsChunk(i, JSON.stringify(p.functionCall!.args || {}))
               );

@@ -98,9 +98,7 @@ export class CloudflareAIProvider extends BaseProvider {
               const tc = toolCalls[i];
               const callId = `call_${generateId(24)}`;
               await writer.write(session.toolCallStartChunk(i, callId, tc.name));
-              await writer.write(
-                session.toolCallArgsChunk(i, JSON.stringify(tc.arguments))
-              );
+              await writer.write(session.toolCallArgsChunk(i, JSON.stringify(tc.arguments)));
             }
           } else if (text) {
             await writer.write(session.textChunk(text));

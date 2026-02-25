@@ -35,8 +35,16 @@ jobs:
       - name: Run type check
         run: pnpm run type-check
 
-      - name: Run format check
-        run: pnpm exec prettier --check "src/**/*.ts"
+      - name: Format code
+        run: pnpm exec prettier --write "src/**/*.ts"
+
+      - name: Commit and push formatting changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --staged --quiet || git commit -m "style: auto-format with prettier [skip ci]"
+          git push
 
   deploy:
     name: Deploy

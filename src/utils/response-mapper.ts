@@ -61,7 +61,10 @@ export class StreamSession {
   }
 
   /** Encode a delta into an SSE data line */
-  chunk(delta: StreamDelta, finishReason: 'stop' | 'length' | 'tool_calls' | null = null): Uint8Array {
+  chunk(
+    delta: StreamDelta,
+    finishReason: 'stop' | 'length' | 'tool_calls' | null = null
+  ): Uint8Array {
     const payload = {
       id: this.id,
       object: 'chat.completion.chunk',
