@@ -1,8 +1,5 @@
 # Dependencies
 node_modules/
-# package-lock.json should be committed for CI/CD
-yarn.lock
-pnpm-lock.yaml
 
 # Build outputs
 dist/
