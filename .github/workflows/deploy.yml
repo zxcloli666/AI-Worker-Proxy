@@ -78,6 +78,9 @@ jobs:
         env:
           ROUTES_CONFIG: ${{ vars.ROUTES_CONFIG }}
         run: |
+          # Minify JSON to stay within Cloudflare's 5.1 kB text binding limit
+          MINIFIED_CONFIG=$(echo "$ROUTES_CONFIG" | jq -c .)
+
           # Remove existing [vars] section and everything after it
           sed -i '/^\[vars\]/,$d' wrangler.toml
 
@@ -85,7 +88,7 @@ jobs:
           cat >> wrangler.toml << EOF
 
           [vars]
-          ROUTES_CONFIG = '''${ROUTES_CONFIG}'''
+          ROUTES_CONFIG = '''${MINIFIED_CONFIG}'''
           EOF
 
       - name: Deploy to Cloudflare Workers
