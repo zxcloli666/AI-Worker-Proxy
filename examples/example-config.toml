@@ -99,6 +99,14 @@ ROUTES_CONFIG = '''
 }
 '''
 
+# Supported provider types:
+# - anthropic:        Anthropic official API
+# - anthropic-compatible: Third-party Anthropic-compatible API (requires baseUrl)
+# - google:           Google Gemini API
+# - openai:           OpenAI official API
+# - openai-compatible: Third-party OpenAI-compatible API (requires baseUrl)
+# - cloudflare-ai:    Cloudflare Workers AI binding
+#
 # Remember to set secrets with:
 # wrangler secret put ANTHROPIC_KEY_1
 # wrangler secret put GOOGLE_KEY_1

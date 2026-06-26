@@ -55,6 +55,30 @@ ROUTES_CONFIG = '''
       "apiKeys": ["GOOGLE_KEY_1"],
       "grounding": true
     }
+  ],
+  "deepseek-v4-flash": [
+    {
+      "provider": "openai-compatible",
+      "baseUrl": "https://api.deepseek.com",
+      "model": "deepseek-v4-flash",
+      "apiKeys": ["DEEPSEEK_KEY"]
+    }
+  ],
+  "deepseek-v4-pro": [
+    {
+      "provider": "openai-compatible",
+      "baseUrl": "https://api.deepseek.com",
+      "model": "deepseek-v4-pro",
+      "apiKeys": ["DEEPSEEK_KEY"]
+    }
+  ],
+  "glm-5.2": [
+    {
+      "provider": "anthropic-compatible",
+      "baseUrl": "https://api.tokenhub.market",
+      "model": "glm-5.2",
+      "apiKeys": ["THOENHUB_KEY"]
+    }
   ]
 }
 '''

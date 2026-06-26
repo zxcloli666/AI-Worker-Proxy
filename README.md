@@ -151,6 +151,53 @@ print(response.choices[0].message.content)
 
 ---
 
+## 🔧 Adding a New API Provider (Manual)
+
+If you want to add a third-party API provider that's not in the default configuration, you can do it entirely through configuration — no coding needed, as long as the provider speaks OpenAI or Anthropic compatible protocol.
+
+### Step 1: Add Your API Key
+
+1. Go to **Cloudflare Dashboard** → **Workers & Pages** → **ai-worker-proxy** → **Settings** → **Variables**
+2. Click **"Add variable"** → Select **"Encrypt"**
+3. Add your API key as a secret, e.g. `MY_PROVIDER_KEY`
+4. Click **"Save and Deploy"**
+
+### Step 2: Update ROUTES_CONFIG
+
+Edit the `ROUTES_CONFIG` GitHub Variable (or your local `wrangler.toml`) and add your provider route:
+
+```json
+{
+  "my-model": [
+    {
+      "provider": "openai-compatible",
+      "baseUrl": "https://api.your-provider.com/v1",
+      "model": "model-name",
+      "apiKeys": ["MY_PROVIDER_KEY"]
+    }
+  ]
+}
+```
+
+**Provider type reference:**
+
+| `provider` value | When to use | `baseUrl` required? |
+|---|---|---|
+| `anthropic` | Anthropic official API | No |
+| `anthropic-compatible` | Third-party Anthropic-compatible API | **Yes** |
+| `google` | Google Gemini API | No |
+| `openai` | OpenAI official API | No |
+| `openai-compatible` | Third-party OpenAI-compatible API | **Yes** |
+| `cloudflare-ai` | Cloudflare Workers AI binding | No |
+
+### Step 3: Deploy
+
+Push any commit to `main` (or manually re-run the **"Deploy to Cloudflare"** workflow in Actions). Done!
+
+> Want an example? See [examples/example-config.toml](examples/example-config.toml)
+
+---
+
 ## 🔒 Security Warning
 
 **NEVER put your real API keys in the GitHub code.** Always put them in the Cloudflare Dashboard (Step 4). If you put them in the code, people will steal your keys.

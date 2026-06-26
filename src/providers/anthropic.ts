@@ -6,7 +6,11 @@ import { createOpenAIResponse, StreamSession } from '../utils/response-mapper';
 export class AnthropicProvider extends BaseProvider {
   async chat(request: OpenAIChatRequest, apiKey: string): Promise<ProviderResponse> {
     try {
-      const client = new Anthropic({ apiKey });
+      const clientOpts: Record<string, unknown> = { apiKey };
+      if (this.baseUrl) {
+        clientOpts.baseURL = this.baseUrl;
+      }
+      const client = new Anthropic(clientOpts);
 
       const { system, messages } = this.convertMessages(request.messages);
 
