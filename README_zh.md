@@ -157,6 +157,64 @@ print(response.choices[0].message.content)
 
 ---
 
+## 🐘 Anthropic API 格式支持
+
+你的代理也支持 **Anthropic Messages API 格式**！这意味着你可以直接用 `@anthropic-ai/sdk` 或任何支持 Anthropic 原生 API 的工具。
+
+**端点地址：** `https://ai-proxy.YOUR-USERNAME.workers.dev/anthropic/`
+**认证方式：** 与 OpenAI 格式相同，使用 `Authorization: Bearer` 或 `x-api-key` 请求头
+
+### Python + Anthropic SDK：
+
+```python
+from anthropic import Anthropic
+
+client = Anthropic(
+    # 你的代理 URL + /anthropic
+    base_url="https://ai-proxy.YOUR-USERNAME.workers.dev/anthropic",
+    # 使用你的 PROXY_AUTH_TOKEN 作为 API Key
+    api_key="my-secret-password-123"
+)
+
+message = client.messages.create(
+    model="deep-think",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "你好，Claude！"}]
+)
+print(message.content[0].text)
+```
+
+### 使用 curl（非流式）：
+
+```bash
+curl -X POST https://ai-proxy.YOUR-USERNAME.workers.dev/anthropic/v1/messages \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer my-secret-password-123" \
+  -d '{
+    "model": "deep-think",
+    "max_tokens": 1024,
+    "messages": [{"role": "user", "content": "你好！"}]
+  }'
+```
+
+### 使用 curl（流式）：
+
+```bash
+curl -N -X POST https://ai-proxy.YOUR-USERNAME.workers.dev/anthropic/v1/messages \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer my-secret-password-123" \
+  -d '{
+    "model": "deep-think",
+    "max_tokens": 1024,
+    "messages": [{"role": "user", "content": "从 1 数到 5"}],
+    "stream": true
+  }'
+```
+
+> **工作原理**：当你向使用了 `anthropic` 或 `anthropic-compatible` 类型 provider 的模型发送 Anthropic 格式请求时，代理会直接转发原始格式，不做任何转换——保留所有 Anthropic 特有的功能（system messages、content blocks、tool use、流式事件）。如果模型使用的是其他类型 provider（如 `openai` 或 `google`），代理会自动在格式之间进行转换。
+
+---
+
 ## 🔧 添加新的 API 供应商（手动配置）
 
 如果你想接入第三方 API 提供商，只要它兼容 OpenAI 或 Anthropic 协议，就**完全不需要修改代码**，仅通过配置即可完成。
