@@ -21,6 +21,7 @@ export class AnthropicProvider extends BaseProvider {
         input_schema: tool.function.parameters || {},
       }));
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const params: any = {
         model: this.model,
         messages,
@@ -113,6 +114,7 @@ export class AnthropicProvider extends BaseProvider {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async handleNonStream(client: Anthropic, params: any): Promise<ProviderResponse> {
     const response = await client.messages.create(params);
 
@@ -143,6 +145,7 @@ export class AnthropicProvider extends BaseProvider {
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async handleStream(client: Anthropic, params: any): Promise<ProviderResponse> {
     const stream = await client.messages.stream(params);
     const { readable, writable } = new TransformStream<Uint8Array>();
@@ -212,6 +215,7 @@ export class AnthropicProvider extends BaseProvider {
   /**
    * Native non-stream: forward Anthropic SDK Message directly as rawResponse.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async handleNativeNonStream(client: Anthropic, params: any): Promise<ProviderResponse> {
     const response = await client.messages.create(params);
     return {
@@ -223,6 +227,7 @@ export class AnthropicProvider extends BaseProvider {
   /**
    * Native stream: re-serialize Anthropic SDK StreamEvents as SSE and forward.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async handleNativeStream(client: Anthropic, params: any): Promise<ProviderResponse> {
     const stream = await client.messages.stream(params);
     const { readable, writable } = new TransformStream<Uint8Array>();
@@ -237,6 +242,12 @@ export class AnthropicProvider extends BaseProvider {
         }
       } catch (error) {
         console.error('[AnthropicProvider] Native stream error:', error);
+        try {
+          const errorEvent = { type: 'message_stop' };
+          await writer.write(encoder.encode(`event: message_stop\ndata: ${JSON.stringify(errorEvent)}\n\n`));
+        } catch {
+          // Writer may already be closed
+        }
       } finally {
         try {
           await writer.close();
@@ -265,6 +276,7 @@ export class AnthropicProvider extends BaseProvider {
               ? msg.content.map((p) => (p.type === 'text' ? p.text : '')).join(' ')
               : '';
       } else if (msg.role === 'user' || msg.role === 'assistant') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const content: any[] = [];
 
         if (msg.content) {

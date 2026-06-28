@@ -276,7 +276,7 @@ export class AnthropicStreamAdapter {
     const payload = line.slice(6).trim();
     if (payload === '[DONE]') return toolIndex;
 
-    let parsed: any;
+    let parsed;
     try {
       parsed = JSON.parse(payload);
     } catch {

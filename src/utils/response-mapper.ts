@@ -1,4 +1,4 @@
-import { OpenAIChatResponse, OpenAIMessage, StreamToolCallDelta } from '../types';
+import { OpenAIChatResponse, OpenAIMessage, StreamToolCallDelta, ToolCall } from '../types';
 
 export function generateId(length: number = 29): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -13,7 +13,7 @@ export function createOpenAIResponse(
   content: string,
   model: string,
   finishReason: 'stop' | 'length' | 'tool_calls' = 'stop',
-  toolCalls?: any[]
+  toolCalls?: ToolCall[]
 ): OpenAIChatResponse {
   const message: OpenAIMessage = {
     role: 'assistant',

@@ -5,6 +5,7 @@ import { createOpenAIResponse, StreamSession, generateId } from '../utils/respon
 export class CloudflareAIProvider extends BaseProvider {
   constructor(
     model: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private aiBinding: any
   ) {
     super(model);
@@ -18,6 +19,7 @@ export class CloudflareAIProvider extends BaseProvider {
 
       const messages = this.convertMessages(request.messages);
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const params: any = {
         messages,
         max_tokens: request.max_tokens,
@@ -39,6 +41,7 @@ export class CloudflareAIProvider extends BaseProvider {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async handleNonStream(params: any): Promise<ProviderResponse> {
     const response = await this.aiBinding.run(this.model, params);
 
@@ -49,17 +52,19 @@ export class CloudflareAIProvider extends BaseProvider {
       content = response;
     }
 
-    const openAIResponse = createOpenAIResponse(content, this.model);
-
+    let toolCalls: ToolCall[] | undefined;
+    let finishReason: 'stop' | 'tool_calls' = 'stop';
     if (response.tool_calls && response.tool_calls.length > 0) {
-      openAIResponse.choices[0].message.tool_calls = this.convertToolCalls(response.tool_calls);
-      openAIResponse.choices[0].message.content = null;
-      openAIResponse.choices[0].finish_reason = 'tool_calls';
+      toolCalls = this.convertToolCalls(response.tool_calls);
+      finishReason = 'tool_calls';
     }
+
+    const openAIResponse = createOpenAIResponse(content, this.model, finishReason, toolCalls);
 
     return { success: true, response: openAIResponse };
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async handleStream(params: any): Promise<ProviderResponse> {
     const cfStream = await this.aiBinding.run(this.model, params);
     const { readable, writable } = new TransformStream<Uint8Array>();
@@ -78,6 +83,7 @@ export class CloudflareAIProvider extends BaseProvider {
           if (done) break;
 
           let text = '';
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           let toolCalls: any[] | undefined;
 
           if (typeof value === 'string') {
@@ -127,6 +133,7 @@ export class CloudflareAIProvider extends BaseProvider {
     return { success: true, stream: readable };
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private convertMessages(messages: OpenAIMessage[]): any[] {
     return messages.map((msg) => {
       if (msg.role === 'tool') {
@@ -160,6 +167,7 @@ export class CloudflareAIProvider extends BaseProvider {
     });
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private convertTools(tools: Tool[]): any[] {
     return tools.map((tool) => ({
       type: 'function',
@@ -171,6 +179,7 @@ export class CloudflareAIProvider extends BaseProvider {
     }));
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private convertToolCalls(cfToolCalls: any[]): ToolCall[] {
     return cfToolCalls.map((call) => ({
       id: `call_${generateId(24)}`,

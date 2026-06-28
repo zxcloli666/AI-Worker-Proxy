@@ -33,7 +33,11 @@ export class Router {
   getProvidersForModel(model: string): ProviderConfig[] {
     // Check exact match first
     if (this.routes[model]) {
-      return this.routes[model];
+      const providers = this.routes[model];
+      if (!Array.isArray(providers) || providers.length === 0) {
+        throw new ProxyError(`No providers configured for model: ${model}`, 404);
+      }
+      return providers;
     }
 
     throw new ProxyError(`No providers configured for model: ${model}`, 404);
@@ -66,6 +70,7 @@ export class Router {
 
     console.log(`[Router] Model "${model}" has ${providers.length} provider(s) configured`);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let lastError: any = null;
 
     // Try each provider in order

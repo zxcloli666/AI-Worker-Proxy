@@ -122,10 +122,10 @@ export interface RouteConfig {
 
 // Environment bindings
 export interface Env {
-  AI?: any;
+  AI?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   PROXY_AUTH_TOKEN: string;
   ROUTES_CONFIG: string;
-  [key: string]: any;
+  [key: string]: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 // Provider response

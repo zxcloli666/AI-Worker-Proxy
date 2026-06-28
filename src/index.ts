@@ -163,7 +163,7 @@ async function handleAnthropicNativePath(
   providers: ProviderConfig[],
   env: Env
 ): Promise<Response> {
-  let lastError: any = null;
+  let lastError: unknown = null;
 
   // First try all anthropic-compatible providers natively
   for (const config of providers) {
@@ -205,7 +205,7 @@ async function handleAnthropicNativePath(
         }
 
         return json(result.rawResponse);
-      } catch (error: any) {
+      } catch (error: unknown) {
         lastError = error;
         if (!isRetryableError(error)) {
           break;
@@ -223,9 +223,10 @@ async function handleAnthropicNativePath(
     return handleAnthropicConversionPath(body, router, otherProviders);
   }
 
+  const err = lastError as { message?: string; statusCode?: number } | null;
   throw new ProxyError(
-    `All providers failed: ${lastError?.message || lastError}`,
-    lastError?.statusCode || 500
+    `All providers failed: ${err?.message || lastError}`,
+    err?.statusCode || 500
   );
 }
 

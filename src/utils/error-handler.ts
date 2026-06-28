@@ -46,24 +46,33 @@ export function createErrorResponse(error: unknown): Response {
   );
 }
 
-export function isRateLimitError(error: any): boolean {
+interface ErrorLike {
+  status?: number;
+  statusCode?: number;
+  message?: string;
+  code?: string;
+}
+
+export function isRateLimitError(error: unknown): boolean {
+  const e = error as ErrorLike;
   return (
-    error?.status === 429 ||
-    error?.statusCode === 429 ||
-    error?.message?.toLowerCase().includes('rate limit') ||
-    error?.code === 'rate_limit_exceeded'
+    e.status === 429 ||
+    e.statusCode === 429 ||
+    (typeof e.message === 'string' && e.message.toLowerCase().includes('rate limit')) ||
+    e.code === 'rate_limit_exceeded'
   );
 }
 
-export function isRetryableError(error: any): boolean {
+export function isRetryableError(error: unknown): boolean {
+  const e = error as ErrorLike;
   return (
     isRateLimitError(error) ||
-    error?.status === 503 ||
-    error?.statusCode === 503 ||
-    error?.status === 502 ||
-    error?.statusCode === 502 ||
-    error?.message?.toLowerCase().includes('timeout') ||
-    error?.message?.toLowerCase().includes('overloaded')
+    e.status === 503 ||
+    e.statusCode === 503 ||
+    e.status === 502 ||
+    e.statusCode === 502 ||
+    (typeof e.message === 'string' && e.message.toLowerCase().includes('timeout')) ||
+    (typeof e.message === 'string' && e.message.toLowerCase().includes('overloaded'))
   );
 }
 
@@ -78,10 +87,17 @@ const PROVIDER_TIMEOUT_MS = 25000;
  * The underlying operation continues running but its result is discarded.
  */
 export function withTimeout<T>(promise: Promise<T>, ms = PROVIDER_TIMEOUT_MS): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => {
-      setTimeout(() => reject(new Error(`Provider timeout after ${ms}ms`)), ms);
-    }),
-  ]);
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Provider timeout after ${ms}ms`)), ms);
+    promise.then(
+      (val) => {
+        clearTimeout(timer);
+        resolve(val);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
 }

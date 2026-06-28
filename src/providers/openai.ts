@@ -14,7 +14,7 @@ export class OpenAIProvider extends BaseProvider {
         | OpenAI.Chat.ChatCompletionCreateParamsNonStreaming
         | OpenAI.Chat.ChatCompletionCreateParamsStreaming = {
         model: this.model,
-        messages: request.messages as any,
+        messages: request.messages as any, // eslint-disable-line @typescript-eslint/no-explicit-any
         temperature: request.temperature,
         max_tokens: request.max_tokens,
         top_p: request.top_p,
@@ -22,8 +22,8 @@ export class OpenAIProvider extends BaseProvider {
         presence_penalty: request.presence_penalty,
         stop: request.stop,
         stream: request.stream || false,
-        tools: request.tools as any,
-        tool_choice: request.tool_choice as any,
+        tools: request.tools as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+        tool_choice: request.tool_choice as any, // eslint-disable-line @typescript-eslint/no-explicit-any
       };
 
       if (request.stream) {
@@ -43,7 +43,7 @@ export class OpenAIProvider extends BaseProvider {
     params: OpenAI.Chat.ChatCompletionCreateParamsNonStreaming
   ): Promise<ProviderResponse> {
     const response = await client.chat.completions.create(params);
-    return { success: true, response: response as any };
+    return { success: true, response: response as any }; // eslint-disable-line @typescript-eslint/no-explicit-any
   }
 
   private async handleStream(
