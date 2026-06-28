@@ -244,7 +244,9 @@ export class AnthropicProvider extends BaseProvider {
         console.error('[AnthropicProvider] Native stream error:', error);
         try {
           const errorEvent = { type: 'message_stop' };
-          await writer.write(encoder.encode(`event: message_stop\ndata: ${JSON.stringify(errorEvent)}\n\n`));
+          await writer.write(
+            encoder.encode(`event: message_stop\ndata: ${JSON.stringify(errorEvent)}\n\n`)
+          );
         } catch {
           // Writer may already be closed
         }
