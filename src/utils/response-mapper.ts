@@ -148,4 +148,3 @@ export class StreamSession {
     return this.encoder.encode(`data: ${JSON.stringify(payload)}\n\n`);
   }
 }
-

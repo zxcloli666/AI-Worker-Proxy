@@ -210,7 +210,12 @@ export class GoogleProvider extends BaseProvider {
 
     for (const msg of messages) {
       if (msg.role === 'system') {
-        systemInstruction = typeof msg.content === 'string' ? (msg.content || '') : (msg.content ? msg.content.map(p => p.type === 'text' ? p.text : '').join(' ') : '');
+        systemInstruction =
+          typeof msg.content === 'string'
+            ? msg.content || ''
+            : msg.content
+              ? msg.content.map((p) => (p.type === 'text' ? p.text : '')).join(' ')
+              : '';
       } else if (msg.role === 'user') {
         const parts: Part[] = [];
         if (typeof msg.content === 'string') {
@@ -275,7 +280,12 @@ export class GoogleProvider extends BaseProvider {
         }
       } else if (msg.role === 'tool') {
         const functionName = toolCallNameMap.get(msg.tool_call_id || '');
-        const toolContent = typeof msg.content === 'string' ? (msg.content || '') : (msg.content ? msg.content.map(p => p.type === 'text' ? p.text : '').join(' ') : '');
+        const toolContent =
+          typeof msg.content === 'string'
+            ? msg.content || ''
+            : msg.content
+              ? msg.content.map((p) => (p.type === 'text' ? p.text : '')).join(' ')
+              : '';
 
         contents.push({
           role: 'user',

@@ -130,14 +130,29 @@ export class CloudflareAIProvider extends BaseProvider {
   private convertMessages(messages: OpenAIMessage[]): any[] {
     return messages.map((msg) => {
       if (msg.role === 'tool') {
-        const toolContent = typeof msg.content === 'string' ? (msg.content || '') : (msg.content ? msg.content.map(p => p.type === 'text' ? p.text : '').join(' ') : '');
+        const toolContent =
+          typeof msg.content === 'string'
+            ? msg.content || ''
+            : msg.content
+              ? msg.content.map((p) => (p.type === 'text' ? p.text : '')).join(' ')
+              : '';
         return { role: 'user', content: toolContent };
       }
       if (msg.role === 'assistant' && msg.tool_calls) {
-        const assistantContent = typeof msg.content === 'string' ? (msg.content || '') : (msg.content ? msg.content.map(p => p.type === 'text' ? p.text : '').join(' ') : '');
+        const assistantContent =
+          typeof msg.content === 'string'
+            ? msg.content || ''
+            : msg.content
+              ? msg.content.map((p) => (p.type === 'text' ? p.text : '')).join(' ')
+              : '';
         return { role: 'assistant', content: assistantContent };
       }
-      const textContent = typeof msg.content === 'string' ? (msg.content || '') : (msg.content ? msg.content.map(p => p.type === 'text' ? p.text : '').join(' ') : '');
+      const textContent =
+        typeof msg.content === 'string'
+          ? msg.content || ''
+          : msg.content
+            ? msg.content.map((p) => (p.type === 'text' ? p.text : '')).join(' ')
+            : '';
       return {
         role: msg.role === 'system' ? 'user' : msg.role,
         content: textContent,

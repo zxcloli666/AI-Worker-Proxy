@@ -254,7 +254,12 @@ export class AnthropicProvider extends BaseProvider {
 
     for (const msg of messages) {
       if (msg.role === 'system') {
-        system = typeof msg.content === 'string' ? msg.content : (msg.content ? msg.content.map(p => p.type === 'text' ? p.text : '').join(' ') : '');
+        system =
+          typeof msg.content === 'string'
+            ? msg.content
+            : msg.content
+              ? msg.content.map((p) => (p.type === 'text' ? p.text : '')).join(' ')
+              : '';
       } else if (msg.role === 'user' || msg.role === 'assistant') {
         const content: any[] = [];
 
@@ -306,7 +311,12 @@ export class AnthropicProvider extends BaseProvider {
           convertedMessages.push({ role: msg.role, content });
         }
       } else if (msg.role === 'tool') {
-        const toolContent = typeof msg.content === 'string' ? (msg.content || '') : (msg.content ? msg.content.map(p => p.type === 'text' ? p.text : '').join(' ') : '');
+        const toolContent =
+          typeof msg.content === 'string'
+            ? msg.content || ''
+            : msg.content
+              ? msg.content.map((p) => (p.type === 'text' ? p.text : '')).join(' ')
+              : '';
         convertedMessages.push({
           role: 'user',
           content: [

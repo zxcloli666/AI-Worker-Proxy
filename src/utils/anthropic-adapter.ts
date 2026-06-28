@@ -137,7 +137,10 @@ export function convertOpenAIResponseToAnthropic(
 
   // Add text content
   if (message.content) {
-    const textContent = typeof message.content === 'string' ? message.content : message.content.map(p => p.type === 'text' ? p.text : '').join(' ');
+    const textContent =
+      typeof message.content === 'string'
+        ? message.content
+        : message.content.map((p) => (p.type === 'text' ? p.text : '')).join(' ');
     content.push({ type: 'text', text: textContent });
   }
 
