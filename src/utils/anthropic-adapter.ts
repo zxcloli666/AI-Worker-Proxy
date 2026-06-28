@@ -183,7 +183,10 @@ export function convertOpenAIResponseToAnthropic(
  */
 export class AnthropicStreamAdapter {
   private encoder = new TextEncoder();
+  /** Monotonically increasing counter for the next content block index */
   private blockIndex = 0;
+  /** Index of the currently active content block (used by stopBlock and deltas) */
+  private activeBlockIndex = 0;
   private started = false;
   private textBlockActive = false;
   private toolBlockActive = false;
@@ -216,11 +219,12 @@ export class AnthropicStreamAdapter {
   }
 
   private startTextBlock(controller: TransformStreamDefaultController): void {
+    this.activeBlockIndex = this.blockIndex++;
     this.textBlockActive = true;
     controller.enqueue(
       this.encodeSSE('content_block_start', {
         type: 'content_block_start',
-        index: this.blockIndex,
+        index: this.activeBlockIndex,
         content_block: { type: 'text', text: '' },
       })
     );
@@ -230,7 +234,7 @@ export class AnthropicStreamAdapter {
     controller.enqueue(
       this.encodeSSE('content_block_stop', {
         type: 'content_block_stop',
-        index: this.blockIndex,
+        index: this.activeBlockIndex,
       })
     );
     this.textBlockActive = false;
@@ -304,7 +308,7 @@ export class AnthropicStreamAdapter {
       controller.enqueue(
         this.encodeSSE('content_block_delta', {
           type: 'content_block_delta',
-          index: this.blockIndex,
+          index: this.activeBlockIndex,
           delta: { type: 'text_delta', text: delta.content },
         })
       );
@@ -314,19 +318,19 @@ export class AnthropicStreamAdapter {
     if (delta.tool_calls) {
       for (const tc of delta.tool_calls) {
         if (tc.id) {
-          // Close current text block
-          if (this.textBlockActive) {
+          // Close current block (text or tool) before starting a new one
+          if (this.textBlockActive || this.toolBlockActive) {
             this.stopBlock(controller);
           }
 
           currentToolIndex++;
-          this.blockIndex = currentToolIndex;
+          this.activeBlockIndex = this.blockIndex++;
           this.toolBlockActive = true;
 
           controller.enqueue(
             this.encodeSSE('content_block_start', {
               type: 'content_block_start',
-              index: this.blockIndex,
+              index: this.activeBlockIndex,
               content_block: {
                 type: 'tool_use',
                 id: tc.id,
@@ -341,7 +345,7 @@ export class AnthropicStreamAdapter {
           controller.enqueue(
             this.encodeSSE('content_block_delta', {
               type: 'content_block_delta',
-              index: this.blockIndex,
+              index: this.activeBlockIndex,
               delta: {
                 type: 'input_json_delta',
                 partial_json: tc.function.arguments,
