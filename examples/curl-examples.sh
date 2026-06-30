@@ -126,4 +126,46 @@ curl -X POST "${PROXY_URL}" \
   }'
 echo -e "\n"
 
+echo -e "\n"
+
+# Example 8: Anthropic format — non-streaming
+echo "8. Anthropic format — non-streaming"
+ANTHROPIC_URL="https://your-worker.workers.dev/anthropic/v1/messages"
+curl -X POST "${ANTHROPIC_URL}" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${AUTH_TOKEN}" \
+  -d '{
+    "model": "deep-think",
+    "max_tokens": 100,
+    "messages": [{"role": "user", "content": "Hello! Say one word"}]
+  }'
+echo -e "\n"
+
+# Example 9: Anthropic format — streaming
+echo "9. Anthropic format — streaming"
+curl -N -X POST "${ANTHROPIC_URL}" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${AUTH_TOKEN}" \
+  -d '{
+    "model": "deep-think",
+    "max_tokens": 100,
+    "messages": [{"role": "user", "content": "Count from 1 to 3"}],
+    "stream": true
+  }'
+echo -e "\n"
+
+# Example 10: Anthropic format — with system message
+echo "10. Anthropic format — with system message"
+curl -X POST "${ANTHROPIC_URL}" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${AUTH_TOKEN}" \
+  -d '{
+    "model": "deep-think",
+    "max_tokens": 100,
+    "system": "You are a helpful assistant.",
+    "messages": [{"role": "user", "content": "Tell me a joke"}],
+    "temperature": 0.7
+  }'
+echo -e "\n"
+
 echo "=== Examples complete ==="

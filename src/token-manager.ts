@@ -1,6 +1,6 @@
 import { ProviderConfig, Env, OpenAIChatRequest, ProviderResponse } from './types';
 import { createProvider } from './providers';
-import { isRetryableError } from './utils/error-handler';
+import { isRetryableError, withTimeout } from './utils/error-handler';
 
 export class TokenManager {
   constructor(
@@ -21,27 +21,27 @@ export class TokenManager {
       return await provider.chat(request, '');
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let lastError: any = null;
 
     // Try each API key in order
-    for (const apiKey of apiKeys) {
+    for (let i = 0; i < apiKeys.length; i++) {
+      const apiKey = apiKeys[i];
       try {
         console.log(
-          `[TokenManager] Trying ${this.config.provider}/${this.config.model} with key ending in ...${apiKey.slice(-4)}`
+          `[TokenManager] Trying ${this.config.provider}/${this.config.model} with key ${i + 1}/${apiKeys.length}`
         );
 
-        const response = await provider.chat(request, apiKey);
+        const response = await withTimeout(provider.chat(request, apiKey));
 
         if (response.success) {
-          console.log(`[TokenManager] Success with key ending in ...${apiKey.slice(-4)}`);
+          console.log(`[TokenManager] Success with key ${i + 1}/${apiKeys.length}`);
           return response;
         }
 
         // If response failed but it's retryable, try next key
         lastError = response.error;
-        console.log(
-          `[TokenManager] Failed with key ending in ...${apiKey.slice(-4)}: ${response.error}`
-        );
+        console.log(`[TokenManager] Failed with key ${i + 1}/${apiKeys.length}: ${response.error}`);
 
         // If it's not a retryable error, don't try other keys for this provider
         if (response.statusCode && !this.isRetryableStatusCode(response.statusCode)) {
@@ -49,7 +49,7 @@ export class TokenManager {
         }
       } catch (error) {
         lastError = error;
-        console.error(`[TokenManager] Exception with key ending in ...${apiKey.slice(-4)}:`, error);
+        console.error(`[TokenManager] Exception with key ${i + 1}/${apiKeys.length}:`, error);
 
         // If it's a retryable error, continue to next key
         if (!isRetryableError(error)) {

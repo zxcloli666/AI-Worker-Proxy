@@ -10,6 +10,12 @@ export function createProvider(config: ProviderConfig, env: Env): AIProvider {
     case 'anthropic':
       return new AnthropicProvider(config.model);
 
+    case 'anthropic-compatible':
+      if (!config.baseUrl) {
+        throw new Error('baseUrl is required for anthropic-compatible provider');
+      }
+      return new AnthropicProvider(config.model, config.baseUrl);
+
     case 'google':
       return new GoogleProvider(config.model, undefined, config.grounding);
 

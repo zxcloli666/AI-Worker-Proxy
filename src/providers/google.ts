@@ -94,7 +94,7 @@ export class GoogleProvider extends BaseProvider {
       config,
     });
 
-    let content = response.text || '';
+    const content = response.text || '';
     let toolCalls: ToolCall[] | undefined;
 
     // Extract function calls with thought signatures
@@ -110,7 +110,6 @@ export class GoogleProvider extends BaseProvider {
             arguments: JSON.stringify(p.functionCall!.args || {}),
           },
         }));
-        content = '';
       }
     }
 
@@ -199,19 +198,64 @@ export class GoogleProvider extends BaseProvider {
     let systemInstruction: string | undefined;
     const contents: Content[] = [];
 
+    // Build tool_call_id → function_name lookup map
+    const toolCallNameMap = new Map<string, string>();
+    for (const m of messages) {
+      if (m.tool_calls) {
+        for (const tc of m.tool_calls) {
+          toolCallNameMap.set(tc.id, tc.function.name);
+        }
+      }
+    }
+
     for (const msg of messages) {
       if (msg.role === 'system') {
-        systemInstruction = msg.content || '';
+        systemInstruction =
+          typeof msg.content === 'string'
+            ? msg.content || ''
+            : msg.content
+              ? msg.content.map((p) => (p.type === 'text' ? p.text : '')).join(' ')
+              : '';
       } else if (msg.role === 'user') {
-        contents.push({
-          role: 'user',
-          parts: [{ text: msg.content || '' }],
-        });
+        const parts: Part[] = [];
+        if (typeof msg.content === 'string') {
+          parts.push({ text: msg.content || '' });
+        } else if (msg.content) {
+          for (const part of msg.content) {
+            if (part.type === 'text') {
+              parts.push({ text: part.text });
+            } else if (part.type === 'image_url') {
+              // Parse data URI to extract mime type and base64 data
+              const dataUri = part.image_url.url;
+              const commaIdx = dataUri.indexOf(',');
+              if (commaIdx !== -1) {
+                const header = dataUri.slice(0, commaIdx);
+                const base64Data = dataUri.slice(commaIdx + 1);
+                const mimeMatch = header.match(/^data:([^;]+)/);
+                const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
+                parts.push({
+                  inlineData: { mimeType, data: base64Data },
+                } as Part);
+              }
+            }
+          }
+        }
+        if (parts.length > 0) {
+          contents.push({ role: 'user', parts });
+        }
       } else if (msg.role === 'assistant') {
         const parts: Part[] = [];
 
         if (msg.content) {
-          parts.push({ text: msg.content });
+          if (typeof msg.content === 'string') {
+            parts.push({ text: msg.content });
+          } else {
+            for (const part of msg.content) {
+              if (part.type === 'text') {
+                parts.push({ text: part.text });
+              }
+            }
+          }
         }
 
         if (msg.tool_calls) {
@@ -235,12 +279,13 @@ export class GoogleProvider extends BaseProvider {
           contents.push({ role: 'model', parts });
         }
       } else if (msg.role === 'tool') {
-        // Find the function name from the matching tool call
-        const functionName = messages
-          .slice()
-          .reverse()
-          .find((m) => m.tool_calls?.some((tc) => tc.id === msg.tool_call_id))
-          ?.tool_calls?.find((tc) => tc.id === msg.tool_call_id)?.function.name;
+        const functionName = toolCallNameMap.get(msg.tool_call_id || '');
+        const toolContent =
+          typeof msg.content === 'string'
+            ? msg.content || ''
+            : msg.content
+              ? msg.content.map((p) => (p.type === 'text' ? p.text : '')).join(' ')
+              : '';
 
         contents.push({
           role: 'user',
@@ -248,7 +293,7 @@ export class GoogleProvider extends BaseProvider {
             {
               functionResponse: {
                 name: functionName || 'unknown',
-                response: { content: msg.content || '' },
+                response: { content: toolContent },
               },
             },
           ],

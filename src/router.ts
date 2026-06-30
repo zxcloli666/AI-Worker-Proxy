@@ -33,14 +33,11 @@ export class Router {
   getProvidersForModel(model: string): ProviderConfig[] {
     // Check exact match first
     if (this.routes[model]) {
-      return this.routes[model];
-    }
-
-    // Default fallback - use first available route or throw error
-    const defaultRoute = Object.values(this.routes)[0];
-    if (defaultRoute) {
-      console.log(`[Router] No configuration found for model "${model}", using default route`);
-      return defaultRoute;
+      const providers = this.routes[model];
+      if (!Array.isArray(providers) || providers.length === 0) {
+        throw new ProxyError(`No providers configured for model: ${model}`, 404);
+      }
+      return providers;
     }
 
     throw new ProxyError(`No providers configured for model: ${model}`, 404);
@@ -48,23 +45,37 @@ export class Router {
 
   /**
    * Execute request with provider fallback
-   * Will try providers in order until one succeeds
+   * Will try providers in order until one succeeds.
+   *
+   * @param preferredType - If set, reorder providers so that matching type(s) come first.
+   *                        For example, 'openai' moves openai/openai-compatible to the front.
    */
-  async executeWithFallback(request: OpenAIChatRequest): Promise<ProviderResponse> {
+  async executeWithFallback(
+    request: OpenAIChatRequest,
+    preferredType?: 'openai' | 'anthropic',
+    overrideProviders?: ProviderConfig[]
+  ): Promise<ProviderResponse> {
     const model = request.model;
     if (!model) {
       throw new ProxyError('Model name is required', 400);
     }
 
-    const providers = this.getProvidersForModel(model);
+    // Use override providers if provided, otherwise look up from config
+    const providers = overrideProviders ?? this.getProvidersForModel(model);
+
+    // Reorder: preferred type first, rest after
+    const orderedProviders = preferredType
+      ? this.sortByPreferredType(providers, preferredType)
+      : providers;
 
     console.log(`[Router] Model "${model}" has ${providers.length} provider(s) configured`);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let lastError: any = null;
 
     // Try each provider in order
-    for (let i = 0; i < providers.length; i++) {
-      const config = providers[i];
+    for (let i = 0; i < orderedProviders.length; i++) {
+      const config = orderedProviders[i];
       console.log(
         `[Router] Trying provider ${i + 1}/${providers.length}: ${config.provider}/${config.model}`
       );
@@ -94,6 +105,24 @@ export class Router {
       error: `All providers failed. Last error: ${lastError?.message || lastError || 'Unknown error'}`,
       statusCode: 500,
     };
+  }
+
+  /**
+   * Sort providers so that entries matching the preferred type come first.
+   * E.g. preferredType='openai' puts openai and openai-compatible before all others.
+   * The relative order within each group is preserved from the original array.
+   */
+  private sortByPreferredType(
+    providers: ProviderConfig[],
+    preferredType: 'openai' | 'anthropic'
+  ): ProviderConfig[] {
+    const preferred = providers.filter(
+      (p) => p.provider === preferredType || p.provider === `${preferredType}-compatible`
+    );
+    const rest = providers.filter(
+      (p) => p.provider !== preferredType && p.provider !== `${preferredType}-compatible`
+    );
+    return [...preferred, ...rest];
   }
 
   private parseRoutesConfig(): RouteConfig {

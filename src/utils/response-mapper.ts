@@ -1,4 +1,4 @@
-import { OpenAIChatResponse, OpenAIMessage, StreamToolCallDelta } from '../types';
+import { OpenAIChatResponse, OpenAIMessage, StreamToolCallDelta, ToolCall } from '../types';
 
 export function generateId(length: number = 29): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -13,7 +13,7 @@ export function createOpenAIResponse(
   content: string,
   model: string,
   finishReason: 'stop' | 'length' | 'tool_calls' = 'stop',
-  toolCalls?: any[]
+  toolCalls?: ToolCall[]
 ): OpenAIChatResponse {
   const message: OpenAIMessage = {
     role: 'assistant',
@@ -147,40 +147,4 @@ export class StreamSession {
     };
     return this.encoder.encode(`data: ${JSON.stringify(payload)}\n\n`);
   }
-}
-
-// Keep backward-compat export for any external usage
-export function createStreamChunk(
-  delta: Partial<OpenAIMessage>,
-  model: string,
-  finishReason: 'stop' | 'length' | 'tool_calls' | null = null
-): string {
-  // Ensure tool_calls in delta have `index` field
-  const fixedDelta: StreamDelta = {};
-  if (delta.role) fixedDelta.role = 'assistant';
-  if (delta.content !== undefined) fixedDelta.content = delta.content;
-  if (delta.tool_calls) {
-    fixedDelta.tool_calls = delta.tool_calls.map((tc, i) => ({
-      index: (tc as any).index ?? i,
-      id: tc.id,
-      type: tc.type,
-      function: tc.function,
-    }));
-  }
-
-  const chunk = {
-    id: `chatcmpl-${generateId()}`,
-    object: 'chat.completion.chunk',
-    created: Math.floor(Date.now() / 1000),
-    model,
-    choices: [
-      {
-        index: 0,
-        delta: fixedDelta,
-        finish_reason: finishReason,
-      },
-    ],
-  };
-
-  return `data: ${JSON.stringify(chunk)}\n\n`;
 }

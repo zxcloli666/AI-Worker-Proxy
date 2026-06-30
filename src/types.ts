@@ -1,8 +1,23 @@
 // OpenAI API types
 
+export interface TextContentPart {
+  type: 'text';
+  text: string;
+}
+
+export interface ImageContentPart {
+  type: 'image_url';
+  image_url: {
+    url: string;
+    detail?: 'low' | 'high' | 'auto';
+  };
+}
+
+export type ContentPart = TextContentPart | ImageContentPart;
+
 export interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool' | 'function';
-  content: string | null;
+  content: string | ContentPart[] | null;
   name?: string;
   tool_calls?: ToolCall[];
   tool_call_id?: string;
@@ -87,7 +102,13 @@ export interface OpenAIStreamChunk {
 
 // Provider configuration
 export interface ProviderConfig {
-  provider: 'anthropic' | 'google' | 'openai' | 'openai-compatible' | 'cloudflare-ai';
+  provider:
+    | 'anthropic'
+    | 'anthropic-compatible'
+    | 'google'
+    | 'openai'
+    | 'openai-compatible'
+    | 'cloudflare-ai';
   model: string;
   apiKeys: string[];
   baseUrl?: string;
@@ -101,16 +122,18 @@ export interface RouteConfig {
 
 // Environment bindings
 export interface Env {
-  AI?: any;
+  AI?: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   PROXY_AUTH_TOKEN: string;
   ROUTES_CONFIG: string;
-  [key: string]: any;
+  [key: string]: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 // Provider response
 export interface ProviderResponse {
   success: boolean;
   response?: OpenAIChatResponse;
+  /** Anthropic-native raw response (used by nativeChat path) */
+  rawResponse?: unknown;
   stream?: ReadableStream<Uint8Array>;
   error?: string;
   statusCode?: number;

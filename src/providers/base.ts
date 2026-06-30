@@ -18,16 +18,17 @@ export abstract class BaseProvider implements AIProvider {
 
   abstract chat(request: OpenAIChatRequest, apiKey: string): Promise<ProviderResponse>;
 
-  protected handleError(error: any, context: string): ProviderResponse {
+  protected handleError(error: unknown, context: string): ProviderResponse {
     console.error(`[${context}] Error:`, error);
 
+    const e = error as { message?: string; status?: number; statusCode?: number };
     let statusCode = 500;
-    const message = error?.message || 'Unknown error';
+    const message = e.message || 'Unknown error';
 
-    if (error?.status) {
-      statusCode = error.status;
-    } else if (error?.statusCode) {
-      statusCode = error.statusCode;
+    if (e.status) {
+      statusCode = e.status;
+    } else if (e.statusCode) {
+      statusCode = e.statusCode;
     }
 
     return {
